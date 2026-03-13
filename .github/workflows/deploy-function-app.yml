@@ -1,0 +1,116 @@
+name: Deploy Function App
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'nonprod'
+        type: choice
+        options:
+          - nonprod
+          - prod
+  push:
+    branches:
+      - main
+    paths:
+      - 'azure-claims-rules-mvp-starter/src/ClaimsRules.Api/**'
+      - '.github/workflows/deploy-function-app.yml'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  FUNCTION_APP_PATH: './azure-claims-rules-mvp-starter/src/ClaimsRules.Api'
+  AZURE_RESOURCE_GROUP: rg-claims-rules-${{ github.event.inputs.environment || 'nonprod' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ${{ env.FUNCTION_APP_PATH }}
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ${{ env.FUNCTION_APP_PATH }}
+
+    - name: Run tests
+      run: dotnet test ../../../tests/ClaimsRules.Api.Tests/ClaimsRules.Api.Tests.csproj --configuration Release --no-build --verbosity normal
+      working-directory: ${{ env.FUNCTION_APP_PATH }}
+
+    - name: Publish
+      run: dotnet publish --configuration Release --output ./output
+      working-directory: ${{ env.FUNCTION_APP_PATH }}
+
+    - name: Create deployment package
+      run: |
+        cd ${{ env.FUNCTION_APP_PATH }}/output
+        zip -r ../function-app.zip .
+
+    - name: Azure Login (OIDC)
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Get Function App Name
+      id: get-function-app
+      run: |
+        FUNCTION_APP=$(az deployment group show \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name main \
+          --query properties.outputs.functionAppName.value -o tsv)
+        echo "name=$FUNCTION_APP" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Azure Function App
+      run: |
+        az functionapp deployment source config-zip \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name ${{ steps.get-function-app.outputs.name }} \
+          --src ${{ env.FUNCTION_APP_PATH }}/function-app.zip
+
+    - name: Test Health Endpoint
+      run: |
+        FUNCTION_APP_URL="https://${{ steps.get-function-app.outputs.name }}.azurewebsites.net"
+        sleep 30  # Wait for deployment to propagate
+        
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNCTION_APP_URL/api/health")
+        if [ "$RESPONSE" -eq 200 ]; then
+          echo "✓ Health check passed"
+          echo "## Deployment Successful ✓" >> $GITHUB_STEP_SUMMARY
+          echo "Function App is healthy: $FUNCTION_APP_URL/api/health" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✗ Health check failed with status: $RESPONSE"
+          exit 1
+        fi
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Function App Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **App Name**: ${{ steps.get-function-app.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Base URL**: https://${{ steps.get-function-app.outputs.name }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Available Endpoints" >> $GITHUB_STEP_SUMMARY
+        echo "- GET  /api/health" >> $GITHUB_STEP_SUMMARY
+        echo "- POST /api/csv-ingest" >> $GITHUB_STEP_SUMMARY
+        echo "- POST /api/edi-ingest" >> $GITHUB_STEP_SUMMARY
+        echo "- POST /api/validate-claim" >> $GITHUB_STEP_SUMMARY
+        echo "- GET  /api/get-plans" >> $GITHUB_STEP_SUMMARY
+        echo "- GET  /api/plans/{planId}" >> $GITHUB_STEP_SUMMARY
+        echo "- GET  /api/check-eligibility" >> $GITHUB_STEP_SUMMARY

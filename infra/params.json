@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "westus2"
+    },
+    "workspaceName": {
+      "value": "ahdswstest001"
+    },
+    "fhirServiceName": {
+      "value": "fhirr4test001"
+    },
+    "storageName": {
+      "value": "ahdsstrtest002ncv"
+    },
+    "cosmosAccountName": {
+      "value": "cosmosclaimstest002ncv"
+    },
+    "eventGridTopicName": {
+      "value": "claimseventstest002"
+    },
+    "functionAppName": {
+      "value": "funcclaimstest002ncv"
+    },
+    "appInsightsName": {
+      "value": "appiclaimstest001"
+    },
+    "fabricCapacityName": {
+      "value": "fabricclaimstest001"
+    },
+    "openAIAccountName": {
+      "value": "openaiclaimstest001"
+    },
+    "fabricCapacityAdminId": {
+      "value": ""
+    }
+  }
+}

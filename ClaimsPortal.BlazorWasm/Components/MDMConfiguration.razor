@@ -1,0 +1,565 @@
+@using ClaimsPortal.BlazorWasm.Services
+@using ClaimsPortal.BlazorWasm.Models
+@inject MdmService MdmService
+
+<style>
+    .config-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .config-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .threshold-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .threshold-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .threshold-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .threshold-field label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .threshold-input {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .threshold-input input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+
+    .threshold-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        min-width: 60px;
+    }
+
+    .rules-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+    }
+
+    .rules-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .rules-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .rules-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .rule-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+
+    .algorithm-select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: white;
+    }
+
+    .weight-input {
+        width: 80px;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .checkbox-cell {
+        text-align: center;
+    }
+
+    .btn-add-rule {
+        background: var(--success-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add-rule:hover {
+        background: #0f6d0f;
+        transform: translateY(-2px);
+    }
+
+    .btn-remove {
+        background: var(--error-color);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+
+    .btn-remove:hover {
+        background: #a00;
+    }
+
+    .btn-save {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+
+    .btn-save:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+
+    .btn-test {
+        background: #ff8c00;
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-test:hover {
+        background: #e07b00;
+    }
+
+    .save-indicator {
+        display: inline-block;
+        margin-left: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .save-success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .save-error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .algorithm-info {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        font-style: italic;
+    }
+
+    .test-panel {
+        background: #f8f9fa;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .test-input-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin: 1rem 0;
+    }
+
+    .test-textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+    }
+
+    .test-result {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        box-shadow: var(--shadow);
+    }
+
+    .result-score {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .result-verdict {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .verdict-match {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .verdict-possible {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .verdict-no-match {
+        background: #f8d7da;
+        color: #721c24;
+    }
+</style>
+
+<div class="config-container">
+    <div class="config-header">
+        <h4>⚙️ MDM Configuration - @ResourceType</h4>
+        <div>
+            <button class="btn-test" @onclick="ShowTestPanel">🧪 Test Rules</button>
+            <button class="btn-save" @onclick="SaveConfiguration">💾 Save Configuration</button>
+            @if (!string.IsNullOrEmpty(saveMessage))
+            {
+                <span class="save-indicator @(saveSuccess ? "save-success" : "save-error")">@saveMessage</span>
+            }
+        </div>
+    </div>
+
+    @if (config != null)
+    {
+        <div class="threshold-card">
+            <h5>🎯 Match Thresholds</h5>
+            <div class="threshold-row">
+                <div class="threshold-field">
+                    <label>Strong Match Threshold</label>
+                    <div class="threshold-input">
+                        <input type="range" min="0" max="1" step="0.01" @bind="config.MatchThreshold" @bind:event="oninput" />
+                        <span class="threshold-value">@($"{config.MatchThreshold:P0}")</span>
+                    </div>
+                    <small class="text-muted">Scores above this create automatic MATCH links</small>
+                </div>
+                
+                <div class="threshold-field">
+                    <label>Possible Match Threshold</label>
+                    <div class="threshold-input">
+                        <input type="range" min="0" max="1" step="0.01" @bind="config.PossibleMatchThreshold" @bind:event="oninput" />
+                        <span class="threshold-value">@($"{config.PossibleMatchThreshold:P0}")</span>
+                    </div>
+                    <small class="text-muted">Scores above this require manual review</small>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <label>
+                    <input type="checkbox" @bind="config.Enabled" /> MDM Enabled for @ResourceType
+                </label>
+            </div>
+        </div>
+
+        <h5>📏 Matching Rules</h5>
+        <p class="text-muted">Configure field-level matching algorithms and weights</p>
+        
+        <table class="rules-table">
+            <thead>
+                <tr>
+                    <th>Rule Name</th>
+                    <th>Field Path</th>
+                    <th>Algorithm</th>
+                    <th>Weight</th>
+                    <th>Required</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rule in config.MatchRules)
+                {
+                    <tr>
+                        <td>
+                            <input class="rule-input" @bind="rule.Name" placeholder="SSN, Name, etc." />
+                        </td>
+                        <td>
+                            <input class="rule-input" @bind="rule.FieldPath" placeholder="identifier[0].value" />
+                        </td>
+                        <td>
+                            <select class="algorithm-select" @bind="rule.Algorithm">
+                                @foreach (var algo in availableAlgorithms)
+                                {
+                                    <option value="@algo.Name">@algo.Name</option>
+                                }
+                            </select>
+                            @if (availableAlgorithms.FirstOrDefault(a => a.Name == rule.Algorithm) is { } selectedAlgo)
+                            {
+                                <div class="algorithm-info">@selectedAlgo.Description</div>
+                            }
+                        </td>
+                        <td>
+                            <input type="number" class="weight-input" @bind="rule.Weight" min="0" max="10" step="0.5" />
+                        </td>
+                        <td class="checkbox-cell">
+                            <input type="checkbox" @bind="rule.Required" />
+                        </td>
+                        <td>
+                            <button class="btn-remove" @onclick="() => RemoveRule(rule)">🗑️ Remove</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button class="btn-add-rule" @onclick="AddRule">➕ Add New Rule</button>
+    }
+
+    @if (showTestPanel)
+    {
+        <div class="test-panel">
+            <h5>🧪 Test Matching Rules</h5>
+            <p class="text-muted">Enter sample @ResourceType data in JSON format to test your matching rules</p>
+            
+            <div class="test-input-grid">
+                <div>
+                    <label><strong>Source Resource (JSON)</strong></label>
+                    <textarea class="test-textarea" @bind="testSourceJson" placeholder='{"name": "John Smith", "birthDate": "1980-01-01"}'></textarea>
+                </div>
+                <div>
+                    <label><strong>Target Resource (JSON)</strong></label>
+                    <textarea class="test-textarea" @bind="testTargetJson" placeholder='{"name": "Jon Smyth", "birthDate": "1980-01-01"}'></textarea>
+                </div>
+            </div>
+
+            <button class="btn-test" style="width: 100%; margin-top: 1rem;" @onclick="RunTest">▶️ Run Test</button>
+
+            @if (testResult != null)
+            {
+                <div class="test-result">
+                    <h5>Test Results</h5>
+                    <div class="result-score">@($"{testResultScore * 100:N0}")%</div>
+                    <div class="result-verdict @GetVerdictClass()">
+                        @testResultVerdict
+                    </div>
+
+                    <h6>Rule-by-Rule Breakdown:</h6>
+                    @foreach (var detail in testResultDetails)
+                    {
+                        <div style="padding: 0.5rem; margin: 0.5rem 0; background: #f8f9fa; border-radius: 4px;">
+                            <strong>@detail.Key:</strong> Score: @GetDetailScore(detail.Value)
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ResourceType { get; set; } = "Patient";
+
+    private MdmConfigModel? config;
+    private List<AlgorithmMetadata> availableAlgorithms = new();
+    private string saveMessage = string.Empty;
+    private bool saveSuccess = false;
+
+    private bool showTestPanel = false;
+    private string testSourceJson = string.Empty;
+    private string testTargetJson = string.Empty;
+    private Dictionary<string, object>? testResult;
+    private double testResultScore = 0;
+    private string testResultVerdict = string.Empty;
+    private Dictionary<string, object> testResultDetails = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+        availableAlgorithms = await MdmService.GetAlgorithmsAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadConfigurationAsync();
+    }
+
+    private async Task LoadConfigurationAsync()
+    {
+        config = await MdmService.GetConfigurationAsync(ResourceType);
+    }
+
+    private async Task SaveConfiguration()
+    {
+        if (config == null) return;
+
+        try
+        {
+            var result = await MdmService.UpdateConfigurationAsync(config, "current-user@claimsiq.com");
+            if (result != null)
+            {
+                saveSuccess = true;
+                saveMessage = "✅ Configuration saved successfully";
+            }
+            else
+            {
+                saveSuccess = false;
+                saveMessage = "❌ Failed to save configuration";
+            }
+        }
+        catch (Exception ex)
+        {
+            saveSuccess = false;
+            saveMessage = $"❌ Error: {ex.Message}";
+            Console.WriteLine($"Error saving configuration: {ex.Message}");
+        }
+
+        // Clear message after 3 seconds
+        await Task.Delay(3000);
+        saveMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    private void AddRule()
+    {
+        if (config == null) return;
+        
+        config.MatchRules.Add(new MatchRuleModel
+        {
+            Name = "New Rule",
+            FieldPath = "field.path",
+            Algorithm = "EXACT",
+            Weight = 1.0,
+            Required = false
+        });
+        StateHasChanged();
+    }
+
+    private void RemoveRule(MatchRuleModel rule)
+    {
+        if (config == null) return;
+        
+        config.MatchRules.Remove(rule);
+        StateHasChanged();
+    }
+
+    private void ShowTestPanel()
+    {
+        showTestPanel = !showTestPanel;
+    }
+
+    private async Task RunTest()
+    {
+        try
+        {
+            var source = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(testSourceJson);
+            var target = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(testTargetJson);
+
+            if (source == null || target == null)
+            {
+                testResultVerdict = "Invalid JSON input";
+                return;
+            }
+
+            testResult = await MdmService.TestRulesAsync(ResourceType, source, target);
+            
+            if (testResult != null)
+            {
+                if (testResult.TryGetValue("score", out var scoreObj))
+                {
+                    testResultScore = Convert.ToDouble(scoreObj);
+                }
+
+                if (testResult.TryGetValue("matchResult", out var verdictObj))
+                {
+                    testResultVerdict = verdictObj.ToString() ?? "Unknown";
+                }
+
+                if (testResult.TryGetValue("ruleDetails", out var detailsObj))
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(detailsObj);
+                    testResultDetails = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? new();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            testResultVerdict = $"Error: {ex.Message}";
+        }
+    }
+
+    private string GetVerdictClass()
+    {
+        return testResultVerdict.ToUpperInvariant() switch
+        {
+            "MATCH" => "verdict-match",
+            "POSSIBLE_MATCH" => "verdict-possible",
+            _ => "verdict-no-match"
+        };
+    }
+
+    private string GetDetailScore(object detail)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(detail);
+            var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            
+            if (dict != null && dict.TryGetValue("score", out var scoreObj))
+            {
+                var score = Convert.ToDouble(scoreObj);
+                return $"{score * 100:N0}%";
+            }
+        }
+        catch { }
+        
+        return "N/A";
+    }
+}

@@ -1,0 +1,474 @@
+@page "/formulary"
+@using ClaimsPortal.BlazorWasm.Models
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Formulary Management - ClaimsIQ Platform</PageTitle>
+
+<div class="formulary-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <span class="icon">💊</span>
+                Formulary Management
+            </h1>
+            <p class="page-subtitle">Manage drug formulary, pricing, and coverage policies</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" @onclick="ShowAddDrugModal">
+                <span class="icon">+</span> Add Drug
+            </button>
+            <button class="btn btn-secondary" @onclick="ShowImportModal">
+                <span class="icon">📥</span> Import Feed
+            </button>
+            <button class="btn btn-secondary" @onclick="ExportFormulary">
+                <span class="icon">📤</span> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Formulary Stats -->
+    <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title">@formulary.Drugs.Count</h3>
+                    <p class="card-text text-muted">Total Drugs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title">@formulary.Drugs.Count(d => d.Tier <= 2)</h3>
+                    <p class="card-text text-muted">Generic Drugs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title">@formulary.Drugs.Count(d => d.Tier >= 3 && d.Tier <= 4)</h3>
+                    <p class="card-text text-muted">Brand Drugs</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="card-title">@formulary.Drugs.Count(d => d.Tier == 5)</h3>
+                    <p class="card-text text-muted">Specialty Drugs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="search-section">
+        <div class="search-bar">
+            <input type="text" @bind="searchTerm" @bind:event="oninput" 
+                   placeholder="Search by drug name, NDC, or therapeutic class..." class="search-input" />
+        </div>
+        <div class="filters">
+            <select @bind="filterTier" class="filter-select">
+                <option value="0">All Tiers</option>
+                <option value="1">Tier 1 - Preferred Generic</option>
+                <option value="2">Tier 2 - Generic</option>
+                <option value="3">Tier 3 - Preferred Brand</option>
+                <option value="4">Tier 4 - Non-Preferred</option>
+                <option value="5">Tier 5 - Specialty</option>
+            </select>
+            <select @bind="filterRestriction" class="filter-select">
+                <option value="">All Restrictions</option>
+                <option value="PA">Prior Authorization</option>
+                <option value="ST">Step Therapy</option>
+                <option value="QL">Quantity Limits</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Formulary Table -->
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Drug Name</th>
+                    <th>NDC</th>
+                    <th>Strength</th>
+                    <th>Tier</th>
+                    <th>AWP</th>
+                    <th>WAC</th>
+                    <th>Plan Cost</th>
+                    <th>Restrictions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var drug in FilteredDrugs)
+                {
+                    <tr>
+                        <td>
+                            <div class="drug-name">@drug.DrugName</div>
+                            <div class="generic-name">@drug.GenericName</div>
+                        </td>
+                        <td><code>@drug.NDC</code></td>
+                        <td>@drug.Strength</td>
+                        <td>
+                            <span class="tier-badge tier-@drug.Tier">
+                                Tier @drug.Tier
+                            </span>
+                        </td>
+                        <td>$@drug.AWP.ToString("F2")</td>
+                        <td>$@drug.WAC.ToString("F2")</td>
+                        <td>$@drug.PlanCost.ToString("F2")</td>
+                        <td>
+                            <div class="restrictions">
+                                @if (drug.RequiresPriorAuth)
+                                {
+                                    <span class="restriction-badge pa">PA</span>
+                                }
+                                @if (drug.RequiresStepTherapy)
+                                {
+                                    <span class="restriction-badge st">ST</span>
+                                }
+                                @if (drug.MaxQuantity.HasValue)
+                                {
+                                    <span class="restriction-badge ql">QL: @drug.MaxQuantity</span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" @onclick="() => EditDrug(drug)" title="Edit">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon" @onclick="() => DeleteDrug(drug)" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add/Edit Drug Modal -->
+    @if (showDrugModal)
+    {
+        <div class="modal-overlay" @onclick="HideModals">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h2>@(editingDrug != null ? "Edit Drug" : "Add New Drug")</h2>
+                    <button class="close-btn" @onclick="HideModals">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-grid-2col">
+                        <div class="form-field">
+                            <label>Drug Name *</label>
+                            <input type="text" @bind="drugForm.DrugName" placeholder="Metformin ER" />
+                        </div>
+                        <div class="form-field">
+                            <label>Generic Name</label>
+                            <input type="text" @bind="drugForm.GenericName" placeholder="metformin hydrochloride" />
+                        </div>
+                        <div class="form-field">
+                            <label>NDC *</label>
+                            <input type="text" @bind="drugForm.NDC" placeholder="00093-0058-01" maxlength="13" />
+                        </div>
+                        <div class="form-field">
+                            <label>Strength *</label>
+                            <input type="text" @bind="drugForm.Strength" placeholder="500mg" />
+                        </div>
+                        <div class="form-field">
+                            <label>Dosage Form</label>
+                            <select @bind="drugForm.DosageForm">
+                                <option value="Tablet">Tablet</option>
+                                <option value="Capsule">Capsule</option>
+                                <option value="Liquid">Liquid</option>
+                                <option value="Injection">Injection</option>
+                                <option value="Pen">Pen</option>
+                                <option value="Inhaler">Inhaler</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label>Tier *</label>
+                            <select @bind="drugForm.Tier">
+                                <option value="1">Tier 1 - Preferred Generic</option>
+                                <option value="2">Tier 2 - Generic</option>
+                                <option value="3">Tier 3 - Preferred Brand</option>
+                                <option value="4">Tier 4 - Non-Preferred</option>
+                                <option value="5">Tier 5 - Specialty</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label>AWP (Average Wholesale Price) *</label>
+                            <input type="number" step="0.01" @bind="drugForm.AWP" placeholder="12.50" />
+                        </div>
+                        <div class="form-field">
+                            <label>WAC (Wholesale Acquisition Cost)</label>
+                            <input type="number" step="0.01" @bind="drugForm.WAC" placeholder="10.00" />
+                        </div>
+                        <div class="form-field">
+                            <label>Plan Cost *</label>
+                            <input type="number" step="0.01" @bind="drugForm.PlanCost" placeholder="8.50" />
+                        </div>
+                        <div class="form-field">
+                            <label>Therapeutic Class</label>
+                            <input type="text" @bind="therapeuticClassTemp" placeholder="Diabetes - Biguanides" />
+                        </div>
+                        <div class="form-field full-width">
+                            <label>
+                                <input type="checkbox" @bind="drugForm.RequiresPriorAuth" />
+                                Requires Prior Authorization
+                            </label>
+                        </div>
+                        <div class="form-field full-width">
+                            <label>
+                                <input type="checkbox" @bind="drugForm.RequiresStepTherapy" />
+                                Requires Step Therapy
+                            </label>
+                        </div>
+                        <div class="form-field">
+                            <label>Quantity Limit (per fill)</label>
+                            <input type="number" @bind="quantityLimitTemp" placeholder="30" />
+                        </div>
+                        <div class="form-field">
+                            <label>Max Days Supply</label>
+                            <input type="number" @bind="drugForm.MaxDaysSupply" placeholder="90" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SaveDrug">
+                        <span class="icon">✓</span> Save
+                    </button>
+                    <button class="btn btn-secondary" @onclick="HideModals">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Import Feed Modal -->
+    @if (showImportModal)
+    {
+        <div class="modal-overlay" @onclick="HideModals">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h2>Import External Feed</h2>
+                    <button class="close-btn" @onclick="HideModals">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="import-section">
+                        <h3>Select Data Source</h3>
+                        <div class="data-sources">
+                            <button class="data-source-btn @(selectedSource == "fdb" ? "active" : "")" 
+                                    @onclick='() => selectedSource = "fdb"'>
+                                <div class="source-icon">📊</div>
+                                <div class="source-name">First DataBank</div>
+                                <div class="source-desc">Industry standard drug pricing</div>
+                            </button>
+                            <button class="data-source-btn @(selectedSource == "medispan" ? "active" : "")"
+                                    @onclick='() => selectedSource = "medispan"'>
+                                <div class="source-icon">📈</div>
+                                <div class="source-name">Medi-Span</div>
+                                <div class="source-desc">Comprehensive drug database</div>
+                            </button>
+                            <button class="data-source-btn @(selectedSource == "redbook" ? "active" : "")"
+                                    @onclick='() => selectedSource = "redbook"'>
+                                <div class="source-icon">📕</div>
+                                <div class="source-name">RED BOOK</div>
+                                <div class="source-desc">AWP & WAC pricing updates</div>
+                            </button>
+                            <button class="data-source-btn @(selectedSource == "custom" ? "active" : "")"
+                                    @onclick='() => selectedSource = "custom"'>
+                                <div class="source-icon">📁</div>
+                                <div class="source-name">Custom CSV</div>
+                                <div class="source-desc">Upload your own file</div>
+                            </button>
+                        </div>
+
+                        @if (selectedSource == "custom")
+                        {
+                            <div class="file-upload">
+                                <h3>Upload CSV File</h3>
+                                <p class="help-text">Expected columns: NDC, DrugName, AWP, WAC, PlanCost</p>
+                                <input type="file" accept=".csv" @onchange="HandleFileUpload" />
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(selectedSource))
+                        {
+                            <div class="import-options">
+                                <h3>Import Options</h3>
+                                <label>
+                                    <input type="checkbox" @bind="importOptions.UpdatePricesOnly" />
+                                    Update prices only (don't add new drugs)
+                                </label>
+                                <label>
+                                    <input type="checkbox" @bind="importOptions.PreviewChanges" />
+                                    Preview changes before applying
+                                </label>
+                                <label>
+                                    <input type="checkbox" @bind="importOptions.CreateBackup" />
+                                    Create backup before import
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="ImportFeed" disabled="@string.IsNullOrEmpty(selectedSource)">
+                        <span class="icon">📥</span> Import
+                    </button>
+                    <button class="btn btn-secondary" @onclick="HideModals">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private Formulary formulary = SampleMedicarePlan.GetSampleFormulary();
+    private List<FormularyDrug> FilteredDrugs => formulary.Drugs
+        .Where(d => (string.IsNullOrEmpty(searchTerm) || 
+                     d.DrugName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                     d.NDC.Contains(searchTerm) ||
+                     d.TherapeuticClasses.Any(tc => tc.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))) &&
+                    (filterTier == 0 || d.Tier == filterTier) &&
+                    (string.IsNullOrEmpty(filterRestriction) || 
+                     (filterRestriction == "PA" && d.RequiresPriorAuth) ||
+                     (filterRestriction == "ST" && d.RequiresStepTherapy) ||
+                     (filterRestriction == "QL" && d.MaxQuantity.HasValue)))
+        .ToList();
+
+    private string searchTerm = string.Empty;
+    private int filterTier = 0;
+    private string filterRestriction = string.Empty;
+
+    private bool showDrugModal = false;
+    private bool showImportModal = false;
+    private FormularyDrug? editingDrug = null;
+    private FormularyDrug drugForm = new();
+    private string therapeuticClassTemp = string.Empty;
+    private int? quantityLimitTemp = null;
+
+    private string selectedSource = string.Empty;
+    private ImportOptions importOptions = new();
+
+    private void ShowAddDrugModal()
+    {
+        editingDrug = null;
+        drugForm = new FormularyDrug
+        {
+            DosageForm = "Tablet",
+            Tier = 1,
+            MaxDaysSupply = 90
+        };
+        showDrugModal = true;
+    }
+
+    private void EditDrug(FormularyDrug drug)
+    {
+        editingDrug = drug;
+        drugForm = new FormularyDrug
+        {
+            DrugName = drug.DrugName,
+            GenericName = drug.GenericName,
+            NDC = drug.NDC,
+            Strength = drug.Strength,
+            DosageForm = drug.DosageForm,
+            Tier = drug.Tier,
+            AWP = drug.AWP,
+            WAC = drug.WAC,
+            PlanCost = drug.PlanCost,
+            TherapeuticClasses = new List<string>(drug.TherapeuticClasses),
+            RequiresPriorAuth = drug.RequiresPriorAuth,
+            RequiresStepTherapy = drug.RequiresStepTherapy,
+            MaxQuantity = drug.MaxQuantity,
+            MaxDaysSupply = drug.MaxDaysSupply
+        };
+        showDrugModal = true;
+    }
+
+    private void SaveDrug()
+    {
+        if (editingDrug != null)
+        {
+            // Update existing drug
+            var index = formulary.Drugs.IndexOf(editingDrug);
+            formulary.Drugs[index] = drugForm;
+        }
+        else
+        {
+            // Add new drug
+            formulary.Drugs.Add(drugForm);
+        }
+        HideModals();
+    }
+
+    private void DeleteDrug(FormularyDrug drug)
+    {
+        if (confirm($"Are you sure you want to remove {drug.DrugName} from the formulary?"))
+        {
+            formulary.Drugs.Remove(drug);
+        }
+    }
+
+    private bool confirm(string message) => true; // Simplified for demo
+
+    private void ShowImportModal()
+    {
+        showImportModal = true;
+        selectedSource = string.Empty;
+        importOptions = new ImportOptions
+        {
+            PreviewChanges = true,
+            CreateBackup = true
+        };
+    }
+
+    private void HideModals()
+    {
+        showDrugModal = false;
+        showImportModal = false;
+    }
+
+    private void HandleFileUpload(ChangeEventArgs e)
+    {
+        // File upload logic would go here
+    }
+
+    private async Task ImportFeed()
+    {
+        // Simulate import with sample data
+        await Task.Delay(1000);
+        
+        // Update prices for existing drugs (simulate 2-5% increase)
+        var random = new Random();
+        foreach (var drug in formulary.Drugs)
+        {
+            var priceChange = 1 + (random.Next(2, 5) / 100.0m);
+            drug.AWP *= priceChange;
+            drug.WAC *= priceChange;
+            drug.PlanCost *= priceChange;
+        }
+
+        HideModals();
+        await JSRuntime.InvokeVoidAsync("alert", $"Successfully imported pricing updates from {selectedSource}. {formulary.Drugs.Count} drugs updated.");
+    }
+
+    private async Task ExportFormulary()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", $"Exporting {formulary.Drugs.Count} drugs to Excel...");
+    }
+
+    private class ImportOptions
+    {
+        public bool UpdatePricesOnly { get; set; }
+        public bool PreviewChanges { get; set; }
+        public bool CreateBackup { get; set; }
+    }
+}

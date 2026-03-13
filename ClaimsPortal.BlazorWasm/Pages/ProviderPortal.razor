@@ -1,0 +1,524 @@
+@page "/provider-portal"
+@using ClaimsPortal.BlazorWasm.Services
+@inject NavigationManager Navigation
+@inject ProviderPortalService ProviderService
+
+<PageTitle>Provider Portal - ClaimsIQ Platform</PageTitle>
+
+<div class="page-container">
+    <div class="page-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h3>🤝 Provider Portal</h3>
+        <p class="subtitle">Payer-Provider Network & Contract Management</p>
+    </div>
+
+    <!-- Dashboard Overview -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon">🏥</div>
+                    <h2 class="stat-number">@totalProviders</h2>
+                    <p class="stat-label">Network Providers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon">📄</div>
+                    <h2 class="stat-number">@activeContracts</h2>
+                    <p class="stat-label">Active Contracts</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon">🌐</div>
+                    <h2 class="stat-number">@networkTiers.Count</h2>
+                    <p class="stat-label">Network Tiers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon">⚠️</div>
+                    <h2 class="stat-number">@pendingReviews</h2>
+                    <p class="stat-label">Pending Reviews</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Management -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4>🌐 Network Management</h4>
+            <button class="btn btn-primary btn-sm" @onclick="OpenAddProviderModal">➕ Add Provider to Network</button>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" placeholder="Search by Provider Name, NPI, or TIN" @bind="searchTerm" />
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control" @bind="selectedNetwork">
+                        <option value="">All Networks</option>
+                        <option value="tier1">Tier 1 - Premium</option>
+                        <option value="tier2">Tier 2 - Standard</option>
+                        <option value="tier3">Tier 3 - Basic</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control" @bind="selectedSpecialty">
+                        <option value="">All Specialties</option>
+                        <option value="pcp">Primary Care</option>
+                        <option value="cardio">Cardiology</option>
+                        <option value="ortho">Orthopedics</option>
+                        <option value="derm">Dermatology</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100">🔍 Search</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Provider Name</th>
+                            <th>NPI</th>
+                            <th>Specialty</th>
+                            <th>Network Tier</th>
+                            <th>Contract Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Dr. Sarah Johnson</strong><br /><small>Primary Care Associates</small></td>
+                            <td>1234567890</td>
+                            <td>Primary Care</td>
+                            <td><span class="badge bg-success">Tier 1</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick='() => NavigateTo("/provider-details/1")'>👁️ View</button>
+                                <button class="btn btn-sm btn-outline-secondary">📄 Contract</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dr. Michael Chen</strong><br /><small>Cardiology Specialists</small></td>
+                            <td>9876543210</td>
+                            <td>Cardiology</td>
+                            <td><span class="badge bg-info">Tier 2</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick='() => NavigateTo("/provider-details/2")'>👁️ View</button>
+                                <button class="btn btn-sm btn-outline-secondary">📄 Contract</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dr. Emily Rodriguez</strong><br /><small>Orthopedic Center</small></td>
+                            <td>5551234567</td>
+                            <td>Orthopedics</td>
+                            <td><span class="badge bg-warning text-dark">Tier 3</span></td>
+                            <td><span class="badge bg-warning text-dark">Pending Renewal</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" @onclick='() => NavigateTo("/provider-details/3")'>👁️ View</button>
+                                <button class="btn btn-sm btn-outline-secondary">📄 Contract</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contract Management -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4>📄 Contract Management</h4>
+            <button class="btn btn-primary btn-sm">➕ Create New Contract</button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Contract ID</th>
+                            <th>Provider/Group</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Reimbursement Model</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>CONT-2026-001</strong></td>
+                            <td>Primary Care Associates</td>
+                            <td>01/01/2026</td>
+                            <td>12/31/2026</td>
+                            <td><span class="badge bg-primary">Fee-for-Service</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1">👁️ View</button>
+                                <button class="btn btn-sm btn-outline-secondary">✏️ Edit</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>CONT-2026-002</strong></td>
+                            <td>Cardiology Specialists</td>
+                            <td>03/01/2026</td>
+                            <td>02/28/2027</td>
+                            <td><span class="badge bg-info">Capitation</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1">👁️ View</button>
+                                <button class="btn btn-sm btn-outline-secondary">✏️ Edit</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>CONT-2025-089</strong></td>
+                            <td>Orthopedic Center</td>
+                            <td>06/01/2025</td>
+                            <td>05/31/2026</td>
+                            <td><span class="badge bg-warning text-dark">Value-Based</span></td>
+                            <td><span class="badge bg-warning text-dark">Expiring Soon</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1">👁️ View</button>
+                                <button class="btn btn-sm btn-outline-danger">🔄 Renew</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Tiers Configuration -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4>🏆 Network Tier Configuration</h4>
+            <button class="btn btn-primary btn-sm">⚙️ Manage Tiers</button>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="tier-card tier-1">
+                        <div class="tier-header">
+                            <h5>🏆 Tier 1 - Premium</h5>
+                        </div>
+                        <div class="tier-body">
+                            <p><strong>Member Cost Share:</strong> Lowest</p>
+                            <p><strong>Provider Count:</strong> 95 providers</p>
+                            <p><strong>Quality Score:</strong> ⭐⭐⭐⭐⭐ 4.8/5.0</p>
+                            <p><strong>Requirements:</strong></p>
+                            <ul>
+                                <li>NCQA recognition</li>
+                                <li>HEDIS top 25%</li>
+                                <li>5+ years experience</li>
+                            </ul>
+                            <button class="btn btn-outline-primary btn-sm w-100 mt-2">View Providers</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="tier-card tier-2">
+                        <div class="tier-header">
+                            <h5>🥈 Tier 2 - Standard</h5>
+                        </div>
+                        <div class="tier-body">
+                            <p><strong>Member Cost Share:</strong> Moderate</p>
+                            <p><strong>Provider Count:</strong> 128 providers</p>
+                            <p><strong>Quality Score:</strong> ⭐⭐⭐⭐ 4.2/5.0</p>
+                            <p><strong>Requirements:</strong></p>
+                            <ul>
+                                <li>Board certified</li>
+                                <li>HEDIS top 50%</li>
+                                <li>3+ years experience</li>
+                            </ul>
+                            <button class="btn btn-outline-info btn-sm w-100 mt-2">View Providers</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="tier-card tier-3">
+                        <div class="tier-header">
+                            <h5>🥉 Tier 3 - Basic</h5>
+                        </div>
+                        <div class="tier-body">
+                            <p><strong>Member Cost Share:</strong> Highest</p>
+                            <p><strong>Provider Count:</strong> 24 providers</p>
+                            <p><strong>Quality Score:</strong> ⭐⭐⭐ 3.5/5.0</p>
+                            <p><strong>Requirements:</strong></p>
+                            <ul>
+                                <li>Active license</li>
+                                <li>Meets basic standards</li>
+                                <li>Accepts Medicare rates</li>
+                            </ul>
+                            <button class="btn btn-outline-warning btn-sm w-100 mt-2">View Providers</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Associations -->
+    <div class="card">
+        <div class="card-header">
+            <h4>📋 Plan & Network Associations</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Plan Name</th>
+                            <th>Plan ID</th>
+                            <th>Network Type</th>
+                            <th>Tier 1 Access</th>
+                            <th>Tier 2 Access</th>
+                            <th>Tier 3 Access</th>
+                            <th>Active Members</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Gold PPO Plus</strong></td>
+                            <td>PLAN001</td>
+                            <td><span class="badge bg-primary">PPO</span></td>
+                            <td>✅ Full Access</td>
+                            <td>✅ Full Access</td>
+                            <td>✅ Full Access</td>
+                            <td>1,247</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Silver HMO</strong></td>
+                            <td>PLAN002</td>
+                            <td><span class="badge bg-info">HMO</span></td>
+                            <td>✅ Full Access</td>
+                            <td>✅ Full Access</td>
+                            <td>❌ No Access</td>
+                            <td>3,891</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Northridge Medicare Prime</strong></td>
+                            <td>MA-H1234-001</td>
+                            <td><span class="badge bg-success">Medicare Advantage</span></td>
+                            <td>✅ Full Access</td>
+                            <td>⚠️ PCP Referral</td>
+                            <td>❌ No Access</td>
+                            <td>2,156</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        border-left: 4px solid var(--primary-color);
+        transition: transform 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .stat-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin: 0;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .tier-card {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        height: 100%;
+    }
+
+    .tier-card.tier-1 .tier-header {
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #333;
+    }
+
+    .tier-card.tier-2 .tier-header {
+        background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+        color: #333;
+    }
+
+    .tier-card.tier-3 .tier-header {
+        background: linear-gradient(135deg, #cd7f32 0%, #e9a76f 100%);
+        color: white;
+    }
+
+    .tier-header {
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .tier-header h5 {
+        margin: 0;
+        font-weight: bold;
+    }
+
+    .tier-body {
+        padding: 1rem;
+        background: white;
+    }
+
+    .tier-body ul {
+        padding-left: 1.2rem;
+        margin-bottom: 0;
+    }
+
+    .tier-body li {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+</style>
+
+@code {
+    private string searchTerm = "";
+    private string selectedNetwork = "";
+    private string selectedSpecialty = "";
+    
+    private int totalProviders = 0;
+    private int activeContracts = 0;
+    private int pendingReviews = 0;
+    private List<NetworkTier> networkTiers = new();
+    private List<Provider> providers = new();
+    private List<ProviderContract> contracts = new();
+    private bool showAddProviderModal = false;
+    private bool showAddContractModal = false;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            // Load providers
+            var providerResponse = await ProviderService.SearchProvidersAsync(new ProviderSearchRequest 
+            { 
+                PageNumber = 1, 
+                PageSize = 1000 
+            });
+            providers = providerResponse.Providers;
+            totalProviders = providerResponse.TotalCount;
+
+            // Load contracts
+            contracts = await ProviderService.GetContractsAsync();
+            activeContracts = contracts.Count(c => c.Status == "Active");
+            pendingReviews = contracts.Count(c => c.Status == "Pending");
+
+            // Load network tiers
+            networkTiers = await ProviderService.GetNetworkTiersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenAddProviderModal()
+    {
+        showAddProviderModal = true;
+    }
+
+    private void OpenAddContractModal()
+    {
+        showAddContractModal = true;
+    }
+
+    private async Task AddNewContract(ProviderContract contract)
+    {
+        try
+        {
+            var created = await ProviderService.CreateContractAsync(contract);
+            if (created != null)
+            {
+                contracts.Add(created);
+                activeContracts++;
+                showAddContractModal = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating contract: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateProviderTier(string npi, string newTier)
+    {
+        try
+        {
+            var success = await ProviderService.UpdateProviderTierAsync(npi, newTier);
+            if (success)
+            {
+                // Reload dashboard data to reflect changes
+                await LoadDashboardData();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating tier: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveProviderAsync(string npi)
+    {
+        try
+        {
+            var success = await ProviderService.RemoveProviderAsync(npi);
+            if (success)
+            {
+                providers.RemoveAll(p => p.Npi == npi);
+                totalProviders = providers.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error removing provider: {ex.Message}";
+        }
+    }
+
+    private void NavigateTo(string url)
+    {
+        Navigation.NavigateTo(url);
+    }
+}

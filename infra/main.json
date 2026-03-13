@@ -1,0 +1,656 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "8159608812704686748"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "workspaceName": {
+      "type": "string"
+    },
+    "fhirServiceName": {
+      "type": "string"
+    },
+    "storageName": {
+      "type": "string"
+    },
+    "cosmosAccountName": {
+      "type": "string"
+    },
+    "eventGridTopicName": {
+      "type": "string"
+    },
+    "functionAppName": {
+      "type": "string"
+    },
+    "appInsightsName": {
+      "type": "string"
+    },
+    "fabricCapacityName": {
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.HealthcareApis/workspaces",
+      "apiVersion": "2022-12-01",
+      "name": "[parameters('workspaceName')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.HealthcareApis/workspaces/fhirservices",
+      "apiVersion": "2022-12-01",
+      "name": "[format('{0}/{1}', parameters('workspaceName'), parameters('fhirServiceName'))]",
+      "location": "[parameters('location')]",
+      "kind": "fhir-R4",
+      "properties": {
+        "publicNetworkAccess": "Enabled",
+        "exportConfiguration": {
+          "storageAccountName": "[parameters('storageName')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.HealthcareApis/workspaces', parameters('workspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "isHnsEnabled": true,
+        "allowBlobPublicAccess": false,
+        "minimumTlsVersion": "TLS1_2"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('storageName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageName'), 'default', 'fhir-export')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageName'), 'default', 'analytics')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2023-04-15",
+      "name": "[parameters('cosmosAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "GlobalDocumentDB",
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "enableFreeTier": true,
+        "enableAnalyticalStorage": true,
+        "capabilities": [
+          {
+            "name": "EnableServerless"
+          }
+        ],
+        "locations": [
+          {
+            "locationName": "[parameters('location')]"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+      "apiVersion": "2023-04-15",
+      "name": "[format('{0}/{1}', parameters('cosmosAccountName'), 'claims')]",
+      "properties": {
+        "resource": {
+          "id": "claims"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+      "apiVersion": "2023-04-15",
+      "name": "[format('{0}/{1}/{2}', parameters('cosmosAccountName'), 'claims', 'audit')]",
+      "properties": {
+        "resource": {
+          "id": "audit",
+          "partitionKey": {
+            "paths": [
+              "/id"
+            ],
+            "kind": "Hash"
+          },
+          "analyticalStorageTtl": -1
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosAccountName'), 'claims')]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventGrid/topics",
+      "apiVersion": "2023-06-01-preview",
+      "name": "[parameters('eventGridTopicName')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[parameters('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "IngestionMode": "ApplicationInsights",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('functionAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(parameters('functionAppName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "dotnet-isolated"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            {
+              "name": "FHIR__Endpoint",
+              "value": "[format('https://{0}.azurehealthcareapis.com', parameters('fhirServiceName'))]"
+            },
+            {
+              "name": "FHIR__Audience",
+              "value": "https://azurehealthcareapis.com"
+            },
+            {
+              "name": "Cosmos__AccountEndpoint",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2023-04-15').documentEndpoint]"
+            },
+            {
+              "name": "Cosmos__Database",
+              "value": "claims"
+            },
+            {
+              "name": "Cosmos__AuditContainer",
+              "value": "audit"
+            },
+            {
+              "name": "EventGrid__TopicEndpoint",
+              "value": "[reference(resourceId('Microsoft.EventGrid/topics', parameters('eventGridTopicName')), '2023-06-01-preview').endpoint]"
+            },
+            {
+              "name": "EventGrid__AccessKey",
+              "value": "[listKeys(resourceId('Microsoft.EventGrid/topics', parameters('eventGridTopicName')), '2023-06-01-preview').key1]"
+            }
+          ],
+          "netFrameworkVersion": "v8.0",
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]",
+        "[resourceId('Microsoft.EventGrid/topics', parameters('eventGridTopicName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}-plan', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Y1",
+        "tier": "Dynamic"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.HealthcareApis/workspaces/{0}/fhirservices/{1}', parameters('workspaceName'), parameters('fhirServiceName'))]",
+      "name": "[guid(resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', parameters('workspaceName'), parameters('fhirServiceName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'FhirDataContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5a1fc7df-4bf1-4951-a576-89034ee01acd')]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.HealthcareApis/workspaces/fhirservices', parameters('workspaceName'), parameters('fhirServiceName'))]",
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
+      "apiVersion": "2023-04-15",
+      "name": "[format('{0}/{1}', parameters('cosmosAccountName'), guid(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'CosmosDataContributor'))]",
+      "properties": {
+        "roleDefinitionId": "[format('{0}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002', resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
+        "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]",
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Fabric/capacities",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('fabricCapacityName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "F2",
+        "tier": "Fabric"
+      },
+      "properties": {
+        "administration": {
+          "members": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "fabric-scheduler-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "fabricCapacityName": {
+            "value": "[parameters('fabricCapacityName')]"
+          },
+          "fabricResourceGroup": {
+            "value": "[resourceGroup().name]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12242298993994543521"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "fabricCapacityName": {
+              "type": "string"
+            },
+            "fabricResourceGroup": {
+              "type": "string"
+            },
+            "logicAppNamePause": {
+              "type": "string",
+              "defaultValue": "logic-fabric-pause"
+            },
+            "logicAppNameResume": {
+              "type": "string",
+              "defaultValue": "logic-fabric-resume"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "id-fabric-scheduler",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Fabric/capacities/{0}', parameters('fabricCapacityName'))]",
+              "name": "[guid(resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'), 'Contributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Logic/workflows",
+              "apiVersion": "2019-05-01",
+              "name": "[parameters('logicAppNamePause')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'))]": {}
+                }
+              },
+              "properties": {
+                "state": "Enabled",
+                "definition": {
+                  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                  "contentVersion": "1.0.0.0",
+                  "parameters": {},
+                  "triggers": {
+                    "Recurrence-6PM-EST": {
+                      "type": "Recurrence",
+                      "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "timeZone": "Eastern Standard Time",
+                        "schedule": {
+                          "hours": [
+                            "18"
+                          ],
+                          "minutes": [
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "actions": {
+                    "Check_If_Weekend": {
+                      "type": "Compose",
+                      "inputs": "@or(equals(dayOfWeek(utcNow()), 0), equals(dayOfWeek(utcNow()), 6))",
+                      "runAfter": {}
+                    },
+                    "Condition-Skip_Weekend": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@outputs('Check_If_Weekend')",
+                              false
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Suspend_Fabric_Capacity": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "POST",
+                            "uri": "[format('{0}{1}/suspend?api-version=2023-11-01', environment().resourceManager, resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')))]",
+                            "authentication": {
+                              "type": "ManagedServiceIdentity",
+                              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]",
+                              "audience": "[environment().resourceManager]"
+                            }
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "Check_If_Weekend": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "outputs": {}
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'), 'Contributor'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Logic/workflows",
+              "apiVersion": "2019-05-01",
+              "name": "[parameters('logicAppNameResume')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'))]": {}
+                }
+              },
+              "properties": {
+                "state": "Enabled",
+                "definition": {
+                  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                  "contentVersion": "1.0.0.0",
+                  "parameters": {},
+                  "triggers": {
+                    "Recurrence-8AM-EST": {
+                      "type": "Recurrence",
+                      "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "timeZone": "Eastern Standard Time",
+                        "schedule": {
+                          "hours": [
+                            "8"
+                          ],
+                          "minutes": [
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "actions": {
+                    "Check_If_Weekend": {
+                      "type": "Compose",
+                      "inputs": "@or(equals(dayOfWeek(utcNow()), 0), equals(dayOfWeek(utcNow()), 6))",
+                      "runAfter": {}
+                    },
+                    "Condition-Skip_Weekend": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@outputs('Check_If_Weekend')",
+                              false
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Resume_Fabric_Capacity": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "POST",
+                            "uri": "[format('{0}{1}/resume?api-version=2023-11-01', environment().resourceManager, resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')))]",
+                            "authentication": {
+                              "type": "ManagedServiceIdentity",
+                              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]",
+                              "audience": "[environment().resourceManager]"
+                            }
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "Check_If_Weekend": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "outputs": {}
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler'), 'Contributor'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "managedIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'id-fabric-scheduler')]"
+            },
+            "pauseLogicAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppNamePause'))]"
+            },
+            "resumeLogicAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppNameResume'))]"
+            },
+            "schedule": {
+              "type": "string",
+              "value": "Pause: 6 PM EST (weekdays), Resume: 8 AM EST (weekdays). Weekends: Always paused."
+            },
+            "monthlyCost": {
+              "type": "string",
+              "value": "Logic Apps Consumption: ~$0.10/month (first 4,000 executions free)"
+            },
+            "estimatedSavings": {
+              "type": "string",
+              "value": "Fabric F2: ~$370/month savings (14hrs/day + weekends paused = 70% savings)"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "fhirEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.azurehealthcareapis.com', parameters('fhirServiceName'))]"
+    },
+    "functionAppName": {
+      "type": "string",
+      "value": "[parameters('functionAppName')]"
+    },
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01').defaultHostName)]"
+    },
+    "cosmosEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2023-04-15').documentEndpoint]"
+    },
+    "eventGridEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.EventGrid/topics', parameters('eventGridTopicName')), '2023-06-01-preview').endpoint]"
+    },
+    "eventGridKey": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.EventGrid/topics', parameters('eventGridTopicName')), '2023-06-01-preview').key1]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[parameters('storageName')]"
+    },
+    "fabricCapacityName": {
+      "type": "string",
+      "value": "[parameters('fabricCapacityName')]"
+    },
+    "fabricCapacityId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Fabric/capacities', parameters('fabricCapacityName'))]"
+    },
+    "fabricScheduler": {
+      "type": "object",
+      "value": {
+        "pauseLogicAppId": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-scheduler-deployment'), '2025-04-01').outputs.pauseLogicAppId.value]",
+        "resumeLogicAppId": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-scheduler-deployment'), '2025-04-01').outputs.resumeLogicAppId.value]",
+        "schedule": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-scheduler-deployment'), '2025-04-01').outputs.schedule.value]",
+        "monthlyCost": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-scheduler-deployment'), '2025-04-01').outputs.monthlyCost.value]",
+        "estimatedSavings": "[reference(resourceId('Microsoft.Resources/deployments', 'fabric-scheduler-deployment'), '2025-04-01').outputs.estimatedSavings.value]"
+      }
+    },
+    "oneLakeIntegration": {
+      "type": "object",
+      "value": {
+        "cosmos": {
+          "endpoint": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2023-04-15').documentEndpoint]",
+          "database": "claims",
+          "container": "audit",
+          "analyticalStore": "Enabled - use Fabric mirroring or shortcuts"
+        },
+        "azureStorage": {
+          "accountName": "[parameters('storageName')]",
+          "fhirExportContainer": "fhir-export",
+          "analyticsContainer": "analytics",
+          "connectionString": "Create OneLake shortcut to these containers"
+        },
+        "fabricWorkspace": {
+          "capacity": "[parameters('fabricCapacityName')]",
+          "dataLake": "OneLake (unified across all Fabric workloads)",
+          "orchestration": "Use Fabric Data Pipelines (not ADF)",
+          "compute": "Azure Functions (already deployed)"
+        }
+      }
+    }
+  }
+}

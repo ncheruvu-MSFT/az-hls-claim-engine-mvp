@@ -1,0 +1,410 @@
+@page "/fraud-detection"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject FraudDetectionService FraudService
+@inject NaturalLanguageService NlService
+
+<PageTitle>Fraud Analytics - ClaimsIQ Platform</PageTitle>
+
+<div class="fraud-detection-page">
+    <div class="page-header">
+        <h3>🛡️ Fraud Analytics & Detection</h3>
+        <p class="subtitle">Advanced anomaly detection using machine learning and pattern analysis</p>
+    </div>
+
+    <div class="fraud-analysis-container">
+        <!-- Claim Input Section -->
+        <div class="card">
+            <div class="card-header">
+                <h3>🔍 Analyze Claim for Fraud Indicators</h3>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Claim ID</label>
+                        <input type="text" @bind="claimId" placeholder="CLM-20260107-001" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Patient ID</label>
+                        <input type="text" @bind="patientId" placeholder="PAT001" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Provider ID</label>
+                        <input type="text" @bind="providerId" placeholder="PROV001" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Service Date</label>
+                        <input type="date" @bind="serviceDate" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Service Code (CPT)</label>
+                        <input type="text" @bind="serviceCode" placeholder="99213" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Billed Amount</label>
+                        <input type="number" @bind="billedAmount" placeholder="500.00" step="0.01" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Claim Source</label>
+                        <select @bind="claimSource" class="form-control">
+                            <option value="EDI">EDI (Electronic Data Interchange)</option>
+                            <option value="Portal">Member Portal</option>
+                            <option value="Mobile">Mobile App</option>
+                            <option value="Fax">Fax</option>
+                            <option value="Mail">Mail</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Service Location</label>
+                        <input type="text" @bind="serviceLocation" placeholder="Los Angeles, CA" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button class="btn-primary w-100" @onclick="AnalyzeClaim" disabled="@isAnalyzing">
+                            @if (isAnalyzing)
+                            {
+                                <span>🔄 Analyzing with AI...</span>
+                            }
+                            else
+                            {
+                                <span>🛡️ Run Fraud Analysis</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        @if (fraudResult != null)
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h3>@GetRiskIcon(fraudResult.RiskLevel) Fraud Analysis Results</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Risk Score Summary -->
+                    <div class="row mb-3">
+                        <div class="col-12 col-md-3 text-center">
+                            <div class="p-3 border rounded @GetRiskClass(fraudResult.RiskLevel)">
+                                <h2 class="mb-0">@fraudResult.RiskScore.ToString("N0")</h2>
+                                <small class="text-muted">Risk Score</small>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-9">
+                            <div class="p-3">
+                                <h4>@GetRiskIcon(fraudResult.RiskLevel) @fraudResult.RiskLevel Risk Level</h4>
+                                <p class="mb-2"><strong>Claim ID:</strong> @fraudResult.ClaimId | <strong>Amount:</strong> @($"{fraudResult.ClaimAmount:C}")</p>
+                                @if (fraudResult.RequiresReview)
+                                {
+                                    <span class="badge bg-warning">⚠️ REQUIRES MANUAL REVIEW</span>
+                                }
+                                @if (fraudResult.AutoDenied)
+                                {
+                                    <span class="badge bg-danger">🚫 AUTO-DENIED - INVESTIGATE</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Explanation -->
+                    <div class="alert alert-info">
+                        <h5>🤖 AI Analysis Summary</h5>
+                        <p class="mb-0">@fraudResult.AiExplanation</p>
+                    </div>
+
+                    <!-- Fraud Flags Table -->
+                    @if (fraudResult.FraudFlags.Any())
+                    {
+                        <h5 class="mt-3">🚩 Fraud Indicators Detected (@fraudResult.FraudFlags.Count)</h5>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Severity</th>
+                                        <th>Flag Type</th>
+                                        <th>Description</th>
+                                        <th class="text-end">Risk Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var flag in fraudResult.FraudFlags.OrderByDescending(f => f.ContributionToRiskScore))
+                                    {
+                                        <tr>
+                                            <td><span class="badge bg-@GetSeverityColor(flag.Severity)">@GetFlagIcon(flag.Severity) @flag.Severity</span></td>
+                                            <td><strong>@flag.FlagType</strong></td>
+                                            <td>@flag.Description</td>
+                                            <td class="text-end"><span class="badge bg-danger">+@flag.ContributionToRiskScore</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <!-- Anomalies Table -->
+                    @if (fraudResult.Anomalies.Any())
+                    {
+                        <h5 class="mt-4">📊 Statistical Anomalies Detected (@fraudResult.Anomalies.Count)</h5>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Anomaly Type</th>
+                                        <th>Description</th>
+                                        <th>Expected</th>
+                                        <th>Actual</th>
+                                        <th class="text-end">Deviation</th>
+                                        <th class="text-end">Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var anomaly in fraudResult.Anomalies.OrderByDescending(a => a.Confidence))
+                                    {
+                                        <tr>
+                                            <td><strong>@anomaly.AnomalyType</strong></td>
+                                            <td>@anomaly.Description</td>
+                                            <td>@anomaly.BaselineValue</td>
+                                            <td><strong>@anomaly.ActualValue</strong></td>
+                                            <td class="text-end"><span class="badge bg-warning">@($"{anomaly.DeviationPercentage:N1}")%</span></td>
+                                            <td class="text-end"><span class="badge bg-info">@($"{anomaly.Confidence * 100:N0}")%</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <!-- Geographic Analysis -->
+                    @if (fraudResult.ServiceGeoLocation != null && fraudResult.MemberLastLoginLocation != null)
+                    {
+                        <h5 class="mt-4">🌍 Geographic Analysis</h5>
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-5">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6>📍 Service Location</h6>
+                                        <p class="mb-0">@fraudResult.ServiceGeoLocation.City, @fraudResult.ServiceGeoLocation.State @fraudResult.ServiceGeoLocation.ZipCode</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <div class="card h-100 text-center bg-warning">
+                                    <div class="card-body">
+                                        <h4 class="mb-0">@fraudResult.ServiceGeoLocation.DistanceFrom(fraudResult.MemberLastLoginLocation).ToString("N0")</h4>
+                                        <small>miles apart</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6>🏠 Member Last Login</h6>
+                                        <p class="mb-1">@fraudResult.MemberLastLoginLocation.City, @fraudResult.MemberLastLoginLocation.State</p>
+                                        <small class="text-muted">@fraudResult.MemberLastLogin?.ToString("MMM dd, yyyy h:mm tt")</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Pattern Analysis -->
+                    <h5 class="mt-3">📈 Pattern Analysis</h5>
+                    <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
+                        <div class="col">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="mb-0">@fraudResult.SimilarClaimsCount</h4>
+                                    <small class="text-muted">Similar Claims Found</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="mb-0">@($"{fraudResult.AverageClaimAmount:C}")</h4>
+                                    <small class="text-muted">Historical Average</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h4 class="mb-0">±@($"{fraudResult.StandardDeviation:C}")</h4>
+                                    <small class="text-muted">Std Deviation</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Actions -->
+                    @if (fraudResult.RecommendedActions.Any())
+                    {
+                        <h5 class="mt-3">✅ Recommended Actions</h5>
+                        <ul class="list-group mb-3">
+                            @foreach (var action in fraudResult.RecommendedActions)
+                            {
+                                <li class="list-group-item @(action.Contains("PRIORITY") ? "list-group-item-warning" : "")">@action</li>
+                            }
+                        </ul>
+                    }
+
+                </div>
+            </div>
+
+            <!-- FHIR Mapping -->
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">🔗 FHIR Flag Resource</h4>
+                    <button class="btn-primary" @onclick="() => showFhirJson = !showFhirJson">
+                        @(showFhirJson ? "Hide FHIR JSON" : "Show FHIR JSON")
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (showFhirJson)
+                    {
+                        <pre class="fhir-code"><code>{
+  "resourceType": "Flag",
+  "id": "@fraudResult.ClaimId-fraud",
+  "status": "active",
+  "category": [{
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/flag-category",
+      "code": "safety",
+      "display": "Safety"
+    }]
+  }],
+  "code": {
+    "coding": [{
+      "system": "http://example.org/fraud-flags",
+      "code": "fraud-risk-@fraudResult.RiskLevel.ToLower()",
+      "display": "@fraudResult.RiskLevel Risk Fraud Detection"
+    }],
+    "text": "@fraudResult.FraudFlags.FirstOrDefault()?.FlagType ?? "Fraud Alert""
+  },
+  "subject": {
+    "reference": "Patient/@fraudResult.PatientId"
+  },
+  "period": {
+    "start": "@DateTime.UtcNow.ToString("yyyy-MM-dd")"
+  },
+  "author": {
+    "display": "AI Fraud Detection System"
+  }
+}</code></pre>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Natural Language Assistant -->
+        <div class="nl-assistant">
+            <h3>💬 Ask About Fraud Detection</h3>
+            <textarea @bind="nlQuestion" placeholder="e.g., 'What are common fraud patterns?' or 'Explain impossible travel detection'" rows="3"></textarea>
+            <button class="btn-ask" @onclick="AskQuestion">Ask AI Assistant</button>
+            
+            @if (!string.IsNullOrWhiteSpace(nlAnswer))
+            {
+                <div class="nl-answer">
+                    <strong>AI Assistant:</strong>
+                    <p>@nlAnswer</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string claimId = "CLM-20260107-001";
+    private string patientId = "PAT001";
+    private string providerId = "PROV001";
+    private DateTime serviceDate = DateTime.Today;
+    private string serviceCode = "99213";
+    private decimal billedAmount = 500;
+    private string claimSource = "Portal";
+    private string serviceLocation = "Los Angeles, CA";
+    
+    private bool isAnalyzing = false;
+    private FraudDetectionResult? fraudResult;
+    
+    private string nlQuestion = string.Empty;
+    private string nlAnswer = string.Empty;
+    private bool showFhirJson = false;
+
+    private async Task AnalyzeClaim()
+    {
+        isAnalyzing = true;
+        fraudResult = null;
+        
+        try
+        {
+            var request = new FraudDetectionRequest
+            {
+                ClaimId = claimId,
+                PatientId = patientId,
+                ProviderId = providerId,
+                ServiceDate = serviceDate,
+                ServiceCode = serviceCode,
+                BilledAmount = billedAmount,
+                ClaimSource = claimSource,
+                ServiceLocation = serviceLocation
+            };
+            
+            fraudResult = await FraudService.AnalyzeClaimAsync(request);
+        }
+        finally
+        {
+            isAnalyzing = false;
+        }
+    }
+
+    private async Task AskQuestion()
+    {
+        if (string.IsNullOrWhiteSpace(nlQuestion)) return;
+        
+        nlAnswer = await NlService.GetAnswerAsync(nlQuestion);
+    }
+
+    private string GetRiskClass(string riskLevel) => riskLevel.ToLower() switch
+    {
+        "critical" => "risk-critical",
+        "high" => "risk-high",
+        "medium" => "risk-medium",
+        _ => "risk-low"
+    };
+
+    private string GetRiskIcon(string riskLevel) => riskLevel switch
+    {
+        "Critical" => "🚨",
+        "High" => "🔴",
+        "Medium" => "🟡",
+        _ => "🟢"
+    };
+
+    private string GetFlagIcon(string severity) => severity switch
+    {
+        "Critical" => "🚨",
+        "High" => "⚠️",
+        "Medium" => "⚡",
+        _ => "ℹ️"
+    };
+
+    private string GetSeverityColor(string severity) => severity.ToLower() switch
+    {
+        "critical" => "danger",
+        "high" => "warning",
+        "medium" => "info",
+        _ => "secondary"
+    };
+}

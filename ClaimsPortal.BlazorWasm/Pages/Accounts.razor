@@ -1,0 +1,309 @@
+@page "/accounts"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@using Microsoft.AspNetCore.Components
+@inject AccountService AccountService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Accounts & Members - ClaimsIQ Platform</PageTitle>
+
+<div class="accounts-container">
+    <div class="page-header">
+        <div class="header-content">
+            <div>
+                <h3>🏢 Accounts & Member Management</h3>
+                <p class="subtitle">View accounts, members, and plan enrollment</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" @onclick="AddAccount">
+                    ➕ Add Account
+                </button>
+                <button class="btn-secondary" @onclick="ExportMembers">
+                    📤 Export
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="search-filters-card">
+        <div class="search-section">
+            <input type="text" 
+                   @bind="searchQuery" 
+                   @bind:event="oninput"
+                   @onkeyup="SearchAccounts"
+                   placeholder="🔍 Search accounts by name, ID, or employer..."
+                   class="search-input" />
+        </div>
+        <div class="filters-section">
+            <select @bind="filterStatus" @bind:after="FilterAccounts" class="filter-select">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+            </select>
+            <select @bind="filterPlan" @bind:after="FilterAccounts" class="filter-select">
+                <option value="all">All Plans</option>
+                <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                <option value="PLAN001">Gold PPO Comprehensive</option>
+            </select>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading accounts...</div>
+    }
+    else
+    {
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-icon">🏢</div>
+                <div class="summary-content">
+                    <div class="summary-value">@accounts.Count</div>
+                    <div class="summary-label">Total Accounts</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">👥</div>
+                <div class="summary-content">
+                    <div class="summary-value">@accounts.Sum(a => a.MemberCount)</div>
+                    <div class="summary-label">Total Members</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">✅</div>
+                <div class="summary-content">
+                    <div class="summary-value">@accounts.Count(a => a.Status == "Active")</div>
+                    <div class="summary-label">Active Accounts</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">💰</div>
+                <div class="summary-content">
+                    <div class="summary-value">@($"{accounts.Sum(a => a.TotalPremium):C0}")</div>
+                    <div class="summary-label">Monthly Premium</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Table -->
+        <div class="accounts-table-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Employer</th>
+                        <th>Plan</th>
+                        <th>Members</th>
+                        <th>Status</th>
+                        <th>Monthly Premium</th>
+                        <th>Effective Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var account in filteredAccounts)
+                    {
+                        <tr @onclick="() => SelectAccount(account)" class="@(selectedAccount?.AccountId == account.AccountId ? "selected" : "")">
+                            <td>
+                                <div class="account-info">
+                                    <div class="account-name">@account.AccountName</div>
+                                    <div class="account-id">ID: @account.AccountId</div>
+                                </div>
+                            </td>
+                            <td>@account.EmployerName</td>
+                            <td>
+                                <span class="plan-badge">@account.PlanName</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="member-count-badge">@account.MemberCount members</span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-@account.Status.ToLower()">@account.Status</span>
+                            </td>
+                            <td class="amount">@($"{account.TotalPremium:C0}")</td>
+                            <td>@account.EffectiveDate.ToString("MM/dd/yyyy")</td>
+                            <td>
+                            <button class="btn btn-sm btn-primary" @onclick="() => ViewMembers(account)" @onclick:stopPropagation="true" title="View Members">
+                                👥 Members
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @onclick="() => EditAccount(account)" @onclick:stopPropagation="true" title="Edit Account">
+                                ✏️ Edit
+                            </button>
+                        </td>
+                    </tr>
+                    @if (selectedAccount?.AccountId == account.AccountId && showMembers)
+                    {
+                        <tr class="members-row">
+                            <td colspan="8">
+                                <div class="members-details">
+                                    <div class="members-header">
+                                        <h4>👥 Members in @account.AccountName</h4>
+                                        <button class="btn btn-secondary" @onclick="() => showMembers = false">✖ Close</button>
+                                    </div>
+                                        <table class="members-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Member Name</th>
+                                                    <th>Member ID</th>
+                                                    <th>Relationship</th>
+                                                    <th>Date of Birth</th>
+                                                    <th>Plan</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var member in GetAccountMembers(account.AccountId))
+                                                {
+                                                    <tr>
+                                                        <td>
+                                                            <div class="member-info">
+                                                                <span class="member-icon">@GetMemberIcon(member.Relationship)</span>
+                                                                <span>@member.FirstName @member.LastName</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>@member.MemberId</td>
+                                                        <td>
+                                                            <span class="relationship-badge @member.Relationship.ToLower()">@member.Relationship</span>
+                                                        </td>
+                                                        <td>@member.DateOfBirth.ToString("MM/dd/yyyy")</td>
+                                                        <td>@member.PlanName</td>
+                                                        <td>
+                                                            <span class="status-badge status-active">Active</span>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-sm btn-primary" @onclick="() => ViewMemberDetails(member.MemberId)">
+                                                                👁️ View Details
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                    }
+                }
+            </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Account> accounts = new();
+    private List<Account> filteredAccounts = new();
+    private List<AccountMember> allMembers = new();
+    private Account? selectedAccount;
+    private bool showMembers = false;
+    private bool isLoading = true;
+    private string searchQuery = string.Empty;
+    private string filterStatus = "all";
+    private string filterPlan = "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccounts();
+    }
+
+    private async Task LoadAccounts()
+    {
+        isLoading = true;
+        try
+        {
+            accounts = await AccountService.GetAccountsAsync();
+            allMembers = await AccountService.GetMembersAsync();
+            filteredAccounts = accounts;
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show error message
+            Console.WriteLine($"Error loading accounts: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectAccount(Account account)
+    {
+        if (selectedAccount?.AccountId == account.AccountId)
+        {
+            selectedAccount = null;
+            showMembers = false;
+        }
+        else
+        {
+            selectedAccount = account;
+            showMembers = false;
+        }
+    }
+
+    private async Task ViewMembers(Account account)
+    {
+        selectedAccount = account;
+        showMembers = true;
+        
+        // Refresh members from service
+        allMembers = await AccountService.GetMembersAsync();
+    }
+
+    private void EditAccount(Account account)
+    {
+        // Edit account logic - could open modal for editing
+    }
+
+    private List<AccountMember> GetAccountMembers(string accountId)
+    {
+        return allMembers.Where(m => m.AccountId == accountId).ToList();
+    }
+
+    private void ViewMemberDetails(string memberId)
+    {
+        NavigationManager.NavigateTo($"/accumulators?memberId={memberId}");
+    }
+
+    private async Task SearchAccounts()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredAccounts = accounts;
+        }
+        else
+        {
+            filteredAccounts = await AccountService.SearchAccountsAsync(searchQuery);
+        }
+    }
+
+    private async Task FilterAccounts()
+    {
+        filteredAccounts = await AccountService.FilterAccountsAsync(
+            status: filterStatus == "all" ? null : filterStatus,
+            planId: filterPlan == "all" ? null : filterPlan
+        );
+    }
+
+    private void AddAccount()
+    {
+        // Add new account - could open modal
+    }
+
+    private void ExportMembers()
+    {
+        // Export members to CSV
+    }
+
+    private string GetMemberIcon(string relationship) => relationship switch
+    {
+        "Subscriber" => "👤",
+        "Spouse" => "👫",
+        "Child" => "👶",
+        _ => "👤"
+    };
+}
+}

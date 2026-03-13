@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClaimsIQ Platform</title>
+    <base href="/" />
+    <link href="_framework/dotnet.ixh372u0nc.js" rel="preload" as="script" fetchpriority="high" crossorigin="anonymous" integrity="sha256-evPpi4OoauPtKODlVYD6yE6DVob8VTAPa02Y2hxrgGI=" />
+    <!-- Bootstrap 5.3 for responsive design -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- Microsoft Fluent UI for Azure-style components -->
+    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-core/11.0.0/css/fabric.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/enhanced-components.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="ClaimsPortal.BlazorWasm.styles.css" rel="stylesheet" />
+    <script type="importmap">{
+  "imports": {
+    "./_framework/blazor.webassembly.js": "./_framework/blazor.webassembly.66stpp682q.js",
+    "./_framework/dotnet.js": "./_framework/dotnet.ixh372u0nc.js",
+    "./_framework/dotnet.native.js": "./_framework/dotnet.native.4xbsgn06op.js",
+    "./_framework/dotnet.runtime.js": "./_framework/dotnet.runtime.zj9dll5ffg.js"
+  },
+  "scopes": {},
+  "integrity": {
+    "./_framework/blazor.webassembly.66stpp682q.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
+    "./_framework/blazor.webassembly.js": "sha256-3lCWrko3zwspV40aQhs2S/IMkRSarnHRKIdkHhuXIBA=",
+    "./_framework/dotnet.ixh372u0nc.js": "sha256-evPpi4OoauPtKODlVYD6yE6DVob8VTAPa02Y2hxrgGI=",
+    "./_framework/dotnet.js": "sha256-evPpi4OoauPtKODlVYD6yE6DVob8VTAPa02Y2hxrgGI=",
+    "./_framework/dotnet.native.4xbsgn06op.js": "sha256-WHdERxxgCQA79nOtWAOvxQ2f7p1kEx+swJwfE4AE9Nk=",
+    "./_framework/dotnet.native.js": "sha256-WHdERxxgCQA79nOtWAOvxQ2f7p1kEx+swJwfE4AE9Nk=",
+    "./_framework/dotnet.runtime.js": "sha256-YdXsn/a7hb+UMypOFCf8bmv3S6PbDPewiNWqmUM/1dk=",
+    "./_framework/dotnet.runtime.zj9dll5ffg.js": "sha256-YdXsn/a7hb+UMypOFCf8bmv3S6PbDPewiNWqmUM/1dk="
+  }
+}</script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-3 fw-bold text-primary">Loading ClaimsIQ Platform...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    
+    <script>
+        // File download helper for CMS export
+        window.downloadFile = function(filename, content) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        };
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // File download helper for JSON and PDF files
+        window.downloadFile = function(dataUrlOrContent, filename) {
+            // Handle data URLs (base64 PDFs)
+            if (typeof dataUrlOrContent === 'string' && dataUrlOrContent.startsWith('data:')) {
+                const a = document.createElement('a');
+                a.href = dataUrlOrContent;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                // Handle regular content (JSON)
+                const blob = new Blob([dataUrlOrContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        };
+    </script>
+    <script src="_framework/blazor.webassembly.66stpp682q.js"></script>
+</body>
+
+</html>

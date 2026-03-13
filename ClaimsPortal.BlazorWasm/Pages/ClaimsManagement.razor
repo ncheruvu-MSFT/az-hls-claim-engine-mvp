@@ -1,0 +1,805 @@
+@page "/claims-management"
+@using ClaimsPortal.BlazorWasm.Models
+
+<PageTitle>Claims Management - ClaimsIQ Platform</PageTitle>
+
+<div class="claims-management-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <span class="icon">📋</span>
+                Claims Management
+            </h1>
+            <p class="page-subtitle">Process medical, dental, and pharmacy claims with automated adjudication</p>
+        </div>
+    </div>
+
+    <!-- Main Tab Navigation -->
+    <div class="main-tabs">
+        <button class="main-tab @(activeTab == "medical" ? "active" : "")" @onclick='() => activeTab = "medical"'>
+            <span class="tab-icon">🏥</span> Medical Claims
+        </button>
+        <button class="main-tab @(activeTab == "dental" ? "active" : "")" @onclick='() => activeTab = "dental"'>
+            <span class="tab-icon">🦷</span> Dental Claims
+        </button>
+        <button class="main-tab @(activeTab == "pharmacy" ? "active" : "")" @onclick='() => activeTab = "pharmacy"'>
+            <span class="tab-icon">💊</span> Pharmacy Claims
+        </button>
+    </div>
+
+    <!-- Medical Claims Tab -->
+    @if (activeTab == "medical")
+    {
+        <div class="tab-content">
+            <!-- Sub-tabs for Medical -->
+            <div class="sub-tabs">
+                <button class="sub-tab @(medicalSubTab == "add" ? "active" : "")" @onclick='() => medicalSubTab = "add"'>
+                    Add New Claim
+                </button>
+                <button class="sub-tab @(medicalSubTab == "modify" ? "active" : "")" @onclick='() => medicalSubTab = "modify"'>
+                    Modify Existing
+                </button>
+                <button class="sub-tab @(medicalSubTab == "search" ? "active" : "")" @onclick='() => medicalSubTab = "search"'>
+                    Search Claims
+                </button>
+            </div>
+
+            @if (medicalSubTab == "add")
+            {
+                <div class="form-container">
+                    <h2 class="form-title">Add New Medical Claim</h2>
+                    
+                    <div class="form-section">
+                        <h3>Member Information</h3>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" @bind="medicalClaim.MemberId" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Plan ID</label>
+                                <select @bind="medicalClaim.PlanId">
+                                    <option value="">Select Plan...</option>
+                                    <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                                    <option value="PLAN001">Gold PPO</option>
+                                    <option value="PLAN002">Silver HMO</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="mb-3">Provider Information</h4>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Provider NPI</label>
+                                <input type="text" @bind="medicalClaim.ProviderId" placeholder="1234567890" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Provider Name</label>
+                                <input type="text" @bind="medicalClaim.ProviderName" placeholder="City Medical Center" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Place of Service</label>
+                                <select @bind="medicalClaim.PlaceOfService" class="form-control">
+                                    <option value="11">Office</option>
+                                    <option value="21">Inpatient Hospital</option>
+                                    <option value="22">Outpatient Hospital</option>
+                                    <option value="23">Emergency Room</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="mb-3">Service Details</h4>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Service Date</label>
+                                <input type="date" @bind="medicalClaim.ServiceDate" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">CPT Code</label>
+                                <input type="text" @bind="medicalClaim.ProcedureCode" placeholder="99214" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Diagnosis Code (ICD-10)</label>
+                                <input type="text" @bind="medicalClaim.DiagnosisCode" placeholder="E11.9" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Billed Amount</label>
+                                <input type="number" step="0.01" @bind="medicalClaim.BilledAmount" placeholder="165.00" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @onclick="SubmitMedicalClaim">
+                            <span class="icon">✓</span> Submit Claim
+                        </button>
+                        <button class="btn btn-secondary" @onclick="ClearMedicalForm">
+                            <span class="icon">✗</span> Clear
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(medicalClaimResult))
+                    {
+                        <div class="result-message success">
+                            <span class="icon">✓</span> @medicalClaimResult
+                        </div>
+                    }
+                </div>
+            }
+            else if (medicalSubTab == "modify")
+            {
+                <div class="modify-container">
+                    <h2>Modify Existing Medical Claim</h2>
+                    <div class="search-box">
+                        <input type="text" placeholder="Enter Claim ID to modify..." />
+                        <button class="btn btn-primary">Search</button>
+                    </div>
+                    <p class="info-message">Enter a claim ID to load and modify existing claim details.</p>
+                </div>
+            }
+            else
+            {
+                <div class="search-container">
+                    <h2>Search Medical Claims</h2>
+                    <div class="search-filters">
+                        <input type="text" placeholder="Member ID" />
+                        <input type="date" placeholder="From Date" />
+                        <input type="date" placeholder="To Date" />
+                        <select>
+                            <option value="">All Statuses</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Denied">Denied</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                        <button class="btn btn-primary">Search</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Dental Claims Tab -->
+    @if (activeTab == "dental")
+    {
+        <div class="tab-content">
+            <!-- Sub-tabs for Dental -->
+            <div class="sub-tabs">
+                <button class="sub-tab @(dentalSubTab == "add" ? "active" : "")" @onclick='() => dentalSubTab = "add"'>
+                    Add New Claim
+                </button>
+                <button class="sub-tab @(dentalSubTab == "modify" ? "active" : "")" @onclick='() => dentalSubTab = "modify"'>
+                    Modify Existing
+                </button>
+                <button class="sub-tab @(dentalSubTab == "search" ? "active" : "")" @onclick='() => dentalSubTab = "search"'>
+                    Search Claims
+                </button>
+            </div>
+
+            @if (dentalSubTab == "add")
+            {
+                <div class="form-container">
+                    <h2 class="form-title">Add New Dental Claim</h2>
+                    
+                    <div class="form-section">
+                        <h3>Member & Dentist Information</h3>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" @bind="dentalClaim.MemberId" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Plan ID</label>
+                                <select @bind="dentalClaim.PlanId">
+                                    <option value="">Select Plan...</option>
+                                    <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>Dentist NPI</label>
+                                <input type="text" @bind="dentalClaim.DentistNPI" placeholder="1234567890" />
+                            </div>
+                            <div class="form-field">
+                                <label>Dentist Name</label>
+                                <input type="text" @bind="dentalClaim.DentistName" placeholder="Smile Dental Group" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Service Details</h3>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Service Date</label>
+                                <input type="date" @bind="dentalClaim.ServiceDate" />
+                            </div>
+                            <div class="form-field">
+                                <label>CDT Code</label>
+                                <select @bind="dentalServiceCDT">
+                                    <option value="">Select Procedure...</option>
+                                    <optgroup label="Preventive (Class I)">
+                                        <option value="D1110">D1110 - Adult Cleaning</option>
+                                        <option value="D0120">D0120 - Periodic Exam</option>
+                                        <option value="D0274">D0274 - Bitewing X-Rays</option>
+                                    </optgroup>
+                                    <optgroup label="Basic (Class II)">
+                                        <option value="D2140">D2140 - Amalgam Filling (1 surface)</option>
+                                        <option value="D2330">D2330 - Composite Filling (1 surface)</option>
+                                        <option value="D7140">D7140 - Simple Extraction</option>
+                                    </optgroup>
+                                    <optgroup label="Major (Class III)">
+                                        <option value="D2740">D2740 - Porcelain Crown</option>
+                                        <option value="D5110">D5110 - Complete Upper Denture</option>
+                                        <option value="D6010">D6010 - Dental Implant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>Tooth Number (1-32)</label>
+                                <input type="text" @bind="dentalToothNumber" placeholder="14" maxlength="2" />
+                            </div>
+                            <div class="form-field">
+                                <label>Billed Amount</label>
+                                <input type="number" step="0.01" @bind="dentalBilledAmount" placeholder="125.00" />
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" @onclick="AddDentalService">
+                            <span class="icon">+</span> Add Service Line
+                        </button>
+                    </div>
+
+                    @if (dentalClaim.Services.Any())
+                    {
+                        <div class="service-lines">
+                            <h3>Service Lines</h3>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>CDT Code</th>
+                                        <th>Tooth</th>
+                                        <th>Amount</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var service in dentalClaim.Services)
+                                    {
+                                        <tr>
+                                            <td>@service.CDTCode</td>
+                                            <td>@service.ToothNumber</td>
+                                            <td>$@service.BilledAmount.ToString("F2")</td>
+                                            <td><button class="btn-link" @onclick="() => RemoveDentalService(service)">Remove</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            </div>
+                            <div class="total-line">
+                                <strong>Total: $@dentalClaim.Services.Sum(s => s.BilledAmount).ToString("F2")</strong>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @onclick="SubmitDentalClaim">
+                            <span class="icon">✓</span> Submit Claim
+                        </button>
+                        <button class="btn btn-secondary" @onclick="ClearDentalForm">
+                            <span class="icon">✗</span> Clear
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(dentalClaimResult))
+                    {
+                        <div class="result-message success">
+                            <span class="icon">✓</span> @dentalClaimResult
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (dentalSubTab == "search")
+            {
+                <div class="search-container">
+                    <h2 class="form-title">Search Dental Claims</h2>
+                    <div class="search-form">
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Claim ID</label>
+                                <input type="text" placeholder="CLM-2026-xxxxx" />
+                            </div>
+                            <div class="form-field">
+                                <label>Service Date From</label>
+                                <input type="date" />
+                            </div>
+                            <div class="form-field">
+                                <label>Service Date To</label>
+                                <input type="date" />
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">🔍 Search Claims</button>
+                    </div>
+
+                    <div class="results-section">
+                        <h3>Search Results</h3>
+                        <table class="claims-table">
+                            <thead>
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Member ID</th>
+                                    <th>Dentist</th>
+                                    <th>Service Date</th>
+                                    <th>Total Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>CLM-2026-D001</td>
+                                    <td>MEM12345</td>
+                                    <td>Dr. Smith DDS</td>
+                                    <td>01/05/2026</td>
+                                    <td>$850.00</td>
+                                    <td><span class="status-approved">Approved</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                                <tr>
+                                    <td>CLM-2026-D002</td>
+                                    <td>MEM12345</td>
+                                    <td>Dr. Johnson DDS</td>
+                                    <td>12/20/2025</td>
+                                    <td>$425.00</td>
+                                    <td><span class="status-pending">Pending</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Pharmacy Claims Tab -->
+    @if (activeTab == "pharmacy")
+    {
+        <div class="tab-content">
+            <!-- Sub-tabs for Pharmacy -->
+            <div class="sub-tabs">
+                <button class="sub-tab @(pharmacySubTab == "add" ? "active" : "")" @onclick='() => pharmacySubTab = "add"'>
+                    Add New Claim
+                </button>
+                <button class="sub-tab @(pharmacySubTab == "modify" ? "active" : "")" @onclick='() => pharmacySubTab = "modify"'>
+                    Modify Existing
+                </button>
+                <button class="sub-tab @(pharmacySubTab == "search" ? "active" : "")" @onclick='() => pharmacySubTab = "search"'>
+                    Search Claims
+                </button>
+            </div>
+
+            @if (pharmacySubTab == "add")
+            {
+                <div class="form-container">
+                    <h2 class="form-title">Add New Pharmacy Claim</h2>
+                    
+                    <div class="form-section">
+                        <h3>Member & Pharmacy Information</h3>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" @bind="pharmacyClaim.MemberId" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Plan ID</label>
+                                <select @bind="pharmacyClaim.PlanId">
+                                    <option value="">Select Plan...</option>
+                                    <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>Pharmacy NPI</label>
+                                <input type="text" @bind="pharmacyClaim.PharmacyNPI" placeholder="1234567890" />
+                            </div>
+                            <div class="form-field">
+                                <label>Prescriber NPI</label>
+                                <input type="text" @bind="pharmacyClaim.PrescriberNPI" placeholder="9876543210" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Prescription Details</h3>
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Drug Name</label>
+                            <select @bind="pharmacyClaim.DrugName" @bind:after="OnDrugSelected">
+                                    <option value="">Select Drug...</option>
+                                    <option value="Metformin 500mg">Metformin 500mg (Tier 1 - $0)</option>
+                                    <option value="Lisinopril 10mg">Lisinopril 10mg (Tier 1 - $0)</option>
+                                    <option value="Atorvastatin 40mg">Atorvastatin 40mg (Tier 1 - $0)</option>
+                                    <option value="Omeprazole 20mg">Omeprazole 20mg (Tier 2 - $10)</option>
+                                    <option value="Januvia 100mg">Januvia 100mg (Tier 3 - $47)</option>
+                                    <option value="Eliquis 5mg">Eliquis 5mg (Tier 3 - $47)</option>
+                                    <option value="Nexium 40mg">Nexium 40mg (Tier 4 - $100)</option>
+                                    <option value="Humira 40mg">Humira 40mg Pen (Tier 5 - 33%)</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>NDC</label>
+                                <input type="text" @bind="pharmacyClaim.NDC" placeholder="00093-0058-01" />
+                            </div>
+                            <div class="form-field">
+                                <label>Quantity</label>
+                                <input type="number" @bind="pharmacyClaim.Quantity" placeholder="30" />
+                            </div>
+                            <div class="form-field">
+                                <label>Days Supply</label>
+                                <select @bind="pharmacyClaim.DaysSupply">
+                                    <option value="30">30 days</option>
+                                    <option value="90">90 days (mail order)</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label>Fill Date</label>
+                                <input type="date" @bind="pharmacyClaim.FillDate" />
+                            </div>
+                            <div class="form-field">
+                                <label>Date Written</label>
+                                <input type="date" @bind="pharmacyClaim.DateWritten" />
+                            </div>
+                            <div class="form-field">
+                                <label>Ingredient Cost</label>
+                                <input type="number" step="0.01" @bind="pharmacyClaim.IngredientCost" placeholder="12.50" />
+                            </div>
+                            <div class="form-field">
+                                <label>Dispensing Fee</label>
+                                <input type="number" step="0.01" @bind="pharmacyClaim.DispensingFee" placeholder="2.50" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" @onclick="SubmitPharmacyClaim">
+                            <span class="icon">✓</span> Submit Claim
+                        </button>
+                        <button class="btn btn-secondary" @onclick="ClearPharmacyForm">
+                            <span class="icon">✗</span> Clear
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(pharmacyClaimResult))
+                    {
+                        <div class="result-message success">
+                            <span class="icon">✓</span> @pharmacyClaimResult
+                        </div>
+                    }
+                </div>
+            }
+            @if (pharmacySubTab == "search")
+            {
+                <div class="search-container">
+                    <h2 class="form-title">Search Pharmacy Claims</h2>
+                    <div class="search-form">
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Claim ID</label>
+                                <input type="text" placeholder="CLM-2026-xxxxx" />
+                            </div>
+                            <div class="form-field">
+                                <label>Fill Date From</label>
+                                <input type="date" />
+                            </div>
+                            <div class="form-field">
+                                <label>Fill Date To</label>
+                                <input type="date" />
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">🔍 Search Claims</button>
+                    </div>
+
+                    <div class="results-section">
+                        <h3>Search Results</h3>
+                        <table class="claims-table">
+                            <thead>
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Member ID</th>
+                                    <th>Medication</th>
+                                    <th>Pharmacy</th>
+                                    <th>Fill Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>CLM-2026-P001</td>
+                                    <td>MEM12345</td>
+                                    <td>Lisinopril 10mg</td>
+                                    <td>CVS Pharmacy #123</td>
+                                    <td>01/08/2026</td>
+                                    <td>$25.00</td>
+                                    <td><span class="status-approved">Approved</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                                <tr>
+                                    <td>CLM-2026-P002</td>
+                                    <td>MEM12345</td>
+                                    <td>Metformin 500mg</td>
+                                    <td>Walgreens #456</td>
+                                    <td>01/05/2026</td>
+                                    <td>$15.00</td>
+                                    <td><span class="status-approved">Approved</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Vision Claims Tab -->
+    @if (activeTab == "vision")
+    {
+        <div class="tab-content">
+            <div class="sub-tabs">
+                <button class="sub-tab @(visionSubTab == "add" ? "active" : "")" @onclick='() => visionSubTab = "add"'>
+                    Add New Claim
+                </button>
+                <button class="sub-tab @(visionSubTab == "modify" ? "active" : "")" @onclick='() => visionSubTab = "modify"'>
+                    Modify Existing
+                </button>
+                <button class="sub-tab @(visionSubTab == "search" ? "active" : "")" @onclick='() => visionSubTab = "search"'>
+                    Search Claims
+                </button>
+            </div>
+
+            @if (visionSubTab == "search")
+            {
+                <div class="search-container">
+                    <h2 class="form-title">Search Vision Claims</h2>
+                    <div class="search-form">
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label>Member ID</label>
+                                <input type="text" placeholder="MEM12345" />
+                            </div>
+                            <div class="form-field">
+                                <label>Claim ID</label>
+                                <input type="text" placeholder="CLM-2026-xxxxx" />
+                            </div>
+                            <div class="form-field">
+                                <label>Service Date From</label>
+                                <input type="date" />
+                            </div>
+                            <div class="form-field">
+                                <label>Service Date To</label>
+                                <input type="date" />
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">🔍 Search Claims</button>
+                    </div>
+
+                    <div class="results-section">
+                        <h3>Search Results</h3>
+                        <table class="claims-table">
+                            <thead>
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Member ID</th>
+                                    <th>Provider</th>
+                                    <th>Service</th>
+                                    <th>Service Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>CLM-2026-V001</td>
+                                    <td>MEM12345</td>
+                                    <td>Vision Center Plus</td>
+                                    <td>Eye Exam + Glasses</td>
+                                    <td>12/15/2025</td>
+                                    <td>$250.00</td>
+                                    <td><span class="status-approved">Approved</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                                <tr>
+                                    <td>CLM-2026-V002</td>
+                                    <td>MEM12345</td>
+                                    <td>Dr. Lee Optometry</td>
+                                    <td>Contact Lenses</td>
+                                    <td>11/20/2025</td>
+                                    <td>$180.00</td>
+                                    <td><span class="status-approved">Approved</span></td>
+                                    <td><button class="btn-view">View</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @if (visionSubTab == "add" || visionSubTab == "modify")
+            {
+                <div class="form-container">
+                    <h2 class="form-title">@(visionSubTab == "add" ? "Add New Vision Claim" : "Modify Vision Claim")</h2>
+                    <div class="alert alert-info">
+                        <strong>ℹ️ Coming Soon:</strong> Vision claim @(visionSubTab == "add" ? "submission" : "modification") form will be available in the next release.
+                    </div>
+                </div>
+            }        </div>
+    }
+</div>
+
+@code {
+    private string activeTab = "medical";
+    private string medicalSubTab = "add";
+    private string dentalSubTab = "add";
+    private string pharmacySubTab = "add";
+    private string visionSubTab = "search";
+
+    // Medical claim
+    private MedicalClaim medicalClaim = new();
+    private string medicalClaimResult = string.Empty;
+
+    // Dental claim
+    private DentalClaim dentalClaim = new();
+    private string dentalServiceCDT = string.Empty;
+    private string dentalToothNumber = string.Empty;
+    private decimal dentalBilledAmount = 0;
+    private string dentalClaimResult = string.Empty;
+
+    // Pharmacy claim
+    private PharmacyClaim pharmacyClaim = new();
+    private string pharmacyClaimResult = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        InitializeForms();
+    }
+
+    private void InitializeForms()
+    {
+        medicalClaim = new MedicalClaim
+        {
+            ServiceDate = DateTime.Today,
+            PlaceOfService = "11"
+        };
+
+        dentalClaim = new DentalClaim
+        {
+            ServiceDate = DateTime.Today
+        };
+
+        pharmacyClaim = new PharmacyClaim
+        {
+            FillDate = DateTime.Today,
+            DateWritten = DateTime.Today.AddDays(-1),
+            DaysSupply = 30,
+            DispensingFee = 2.50m
+        };
+    }
+
+    private async Task SubmitMedicalClaim()
+    {
+        medicalClaim.ClaimId = $"MED-{DateTime.Now:yyyyMMddHHmmss}";
+        medicalClaimResult = $"Medical claim {medicalClaim.ClaimId} submitted successfully! Claim is being processed.";
+        await Task.Delay(100);
+    }
+
+    private void ClearMedicalForm()
+    {
+        medicalClaim = new MedicalClaim { ServiceDate = DateTime.Today, PlaceOfService = "11" };
+        medicalClaimResult = string.Empty;
+    }
+
+    private void AddDentalService()
+    {
+        if (!string.IsNullOrEmpty(dentalServiceCDT) && dentalBilledAmount > 0)
+        {
+            dentalClaim.Services.Add(new DentalService
+            {
+                LineNumber = dentalClaim.Services.Count + 1,
+                CDTCode = dentalServiceCDT,
+                ToothNumber = dentalToothNumber,
+                BilledAmount = dentalBilledAmount
+            });
+
+            dentalServiceCDT = string.Empty;
+            dentalToothNumber = string.Empty;
+            dentalBilledAmount = 0;
+        }
+    }
+
+    private void RemoveDentalService(DentalService service)
+    {
+        dentalClaim.Services.Remove(service);
+    }
+
+    private async Task SubmitDentalClaim()
+    {
+        dentalClaim.ClaimId = $"DEN-{DateTime.Now:yyyyMMddHHmmss}";
+        dentalClaimResult = $"Dental claim {dentalClaim.ClaimId} submitted successfully! Total: ${dentalClaim.TotalBilled:F2}";
+        await Task.Delay(100);
+    }
+
+    private void ClearDentalForm()
+    {
+        dentalClaim = new DentalClaim { ServiceDate = DateTime.Today };
+        dentalServiceCDT = string.Empty;
+        dentalToothNumber = string.Empty;
+        dentalBilledAmount = 0;
+        dentalClaimResult = string.Empty;
+    }
+
+    private void OnDrugSelected()
+    {
+        // Auto-populate NDC based on drug selection
+        var drugName = pharmacyClaim.DrugName;
+        pharmacyClaim.NDC = drugName switch
+        {
+            "Metformin 500mg" => "00093-0058-01",
+            "Lisinopril 10mg" => "00378-0781-93",
+            "Atorvastatin 40mg" => "00093-7347-01",
+            "Omeprazole 20mg" => "00143-9537-01",
+            "Januvia 100mg" => "00310-0710-39",
+            "Eliquis 5mg" => "00186-0084-28",
+            "Nexium 40mg" => "00088-2228-47",
+            "Humira 40mg" => "59676-0580-02",
+            _ => string.Empty
+        };
+    }
+
+    private async Task SubmitPharmacyClaim()
+    {
+        pharmacyClaim.ClaimId = $"RX-{DateTime.Now:yyyyMMddHHmmss}";
+        pharmacyClaimResult = $"Pharmacy claim {pharmacyClaim.ClaimId} submitted successfully! Total cost: ${pharmacyClaim.TotalCost:F2}";
+        await Task.Delay(100);
+    }
+
+    private void ClearPharmacyForm()
+    {
+        pharmacyClaim = new PharmacyClaim
+        {
+            FillDate = DateTime.Today,
+            DateWritten = DateTime.Today.AddDays(-1),
+            DaysSupply = 30,
+            DispensingFee = 2.50m
+        };
+        pharmacyClaimResult = string.Empty;
+    }
+
+    // Helper class for medical claims
+    private class MedicalClaim
+    {
+        public string ClaimId { get; set; } = string.Empty;
+        public string MemberId { get; set; } = string.Empty;
+        public string PlanId { get; set; } = string.Empty;
+        public string ProviderId { get; set; } = string.Empty;
+        public string ProviderName { get; set; } = string.Empty;
+        public string PlaceOfService { get; set; } = string.Empty;
+        public DateTime ServiceDate { get; set; }
+        public string ProcedureCode { get; set; } = string.Empty;
+        public string DiagnosisCode { get; set; } = string.Empty;
+        public decimal BilledAmount { get; set; }
+    }
+}

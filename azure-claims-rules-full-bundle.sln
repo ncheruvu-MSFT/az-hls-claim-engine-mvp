@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure-claims-rules-mvp-devkit", "azure-claims-rules-mvp-devkit", "{CC7B9A51-8996-AC01-69CC-0850E9AA93B4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure-claims-rules-mvp-starter", "azure-claims-rules-mvp-starter", "{64EDE420-ED04-7429-D66A-4FA53E5F9E66}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "mock-fhir", "mock-fhir", "{12727A86-B1BB-9CB0-FE86-7DBD992D6786}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MockFhirServer", "azure-claims-rules-mvp-devkit\mock-fhir\MockFhirServer.csproj", "{9944F057-6E4C-F704-593B-BDD36583432E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{12456CD6-26F4-C60A-8532-05E2CED64EBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaimsRules.Api", "azure-claims-rules-mvp-starter\src\ClaimsRules.Api\ClaimsRules.Api.csproj", "{1A726E23-287F-1154-64DA-9A3D944D90B0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EA1857A4-2D90-EE90-E71B-20B7522FC6D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClaimsRules.Api.Tests", "azure-claims-rules-mvp-starter\tests\ClaimsRules.Api.Tests\ClaimsRules.Api.Tests.csproj", "{52D40021-7445-9C4E-D177-6A1AEC0791D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9944F057-6E4C-F704-593B-BDD36583432E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9944F057-6E4C-F704-593B-BDD36583432E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9944F057-6E4C-F704-593B-BDD36583432E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9944F057-6E4C-F704-593B-BDD36583432E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A726E23-287F-1154-64DA-9A3D944D90B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A726E23-287F-1154-64DA-9A3D944D90B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A726E23-287F-1154-64DA-9A3D944D90B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A726E23-287F-1154-64DA-9A3D944D90B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52D40021-7445-9C4E-D177-6A1AEC0791D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52D40021-7445-9C4E-D177-6A1AEC0791D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52D40021-7445-9C4E-D177-6A1AEC0791D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52D40021-7445-9C4E-D177-6A1AEC0791D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{12727A86-B1BB-9CB0-FE86-7DBD992D6786} = {CC7B9A51-8996-AC01-69CC-0850E9AA93B4}
+		{9944F057-6E4C-F704-593B-BDD36583432E} = {12727A86-B1BB-9CB0-FE86-7DBD992D6786}
+		{12456CD6-26F4-C60A-8532-05E2CED64EBF} = {64EDE420-ED04-7429-D66A-4FA53E5F9E66}
+		{1A726E23-287F-1154-64DA-9A3D944D90B0} = {12456CD6-26F4-C60A-8532-05E2CED64EBF}
+		{EA1857A4-2D90-EE90-E71B-20B7522FC6D3} = {64EDE420-ED04-7429-D66A-4FA53E5F9E66}
+		{52D40021-7445-9C4E-D177-6A1AEC0791D1} = {EA1857A4-2D90-EE90-E71B-20B7522FC6D3}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {935819A1-3554-4D8A-83E4-21907999CD73}
+	EndGlobalSection
+EndGlobal

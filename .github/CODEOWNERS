@@ -1,0 +1,15 @@
+# Default owners for everything in the repo
+* @OWNER_USERNAME
+
+# Infrastructure changes require approval
+/infra/ @OWNER_USERNAME
+/scripts/ @OWNER_USERNAME
+
+# Function App code
+/azure-claims-rules-mvp-starter/ @OWNER_USERNAME
+
+# React Portal
+/claims-portal/ @OWNER_USERNAME
+
+# GitHub workflows require approval
+/.github/ @OWNER_USERNAME

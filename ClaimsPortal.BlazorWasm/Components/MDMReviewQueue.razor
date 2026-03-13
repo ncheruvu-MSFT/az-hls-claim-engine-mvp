@@ -1,0 +1,417 @@
+@using ClaimsPortal.BlazorWasm.Services
+@using ClaimsPortal.BlazorWasm.Models
+@inject MdmService MdmService
+
+<style>
+    .review-queue-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .queue-item {
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .queue-item:hover {
+        border-color: var(--primary-color);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .queue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .match-score {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .priority-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .priority-high {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .priority-medium {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .priority-low {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin: 1.5rem 0;
+    }
+
+    .resource-card {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 1rem;
+    }
+
+    .resource-card h5 {
+        margin: 0 0 1rem 0;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+    }
+
+    .field-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .field-row:last-child {
+        border-bottom: none;
+    }
+
+    .field-label {
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .field-value {
+        color: var(--text-primary);
+    }
+
+    .match-highlight {
+        background: #c8e6c9;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .mismatch-highlight {
+        background: #ffcdd2;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+    }
+
+    .btn-approve {
+        background: var(--success-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-approve:hover {
+        background: #0f6d0f;
+        transform: translateY(-2px);
+    }
+
+    .btn-reject {
+        background: var(--error-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reject:hover {
+        background: #a00;
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .empty-queue {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-queue-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .match-details {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #f1f3f5;
+        border-radius: 6px;
+    }
+
+    .detail-chip {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        background: white;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .detail-score {
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+</style>
+
+<div class="review-queue-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h4>✅ Manual Review Queue - @ResourceType</h4>
+        <button class="btn-secondary" @onclick="RefreshQueue">🔄 Refresh</button>
+    </div>
+
+    @if (loading)
+    {
+        <div class="empty-queue">
+            <div class="empty-queue-icon">⏳</div>
+            <p>Loading review queue...</p>
+        </div>
+    }
+    else if (queueItems.Count == 0)
+    {
+        <div class="empty-queue">
+            <div class="empty-queue-icon">✅</div>
+            <h4>All Caught Up!</h4>
+            <p>No pending matches to review</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var item in queueItems)
+        {
+            <div class="queue-item">
+                <div class="queue-header">
+                    <div>
+                        <h5 style="margin: 0;">Match Candidate</h5>
+                        <small class="text-muted">Created @item.Created.ToString("MMM dd, yyyy HH:mm")</small>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="match-score">@($"{item.MatchScore * 100:N0}")%</div>
+                        <span class="priority-badge @GetPriorityClass(item.Priority)">
+                            Priority: @item.Priority
+                        </span>
+                    </div>
+                </div>
+
+                <div class="match-details">
+                    <strong>Match Details:</strong>
+                    @foreach (var detail in item.MatchDetails)
+                    {
+                        <div class="detail-chip">
+                            @detail.Key: <span class="detail-score">@GetScoreDisplay(detail.Value)</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="resource-card">
+                        <h5>🟡 Golden Resource</h5>
+                        @if (item.GoldenResourceData != null)
+                        {
+                            @foreach (var field in item.GoldenResourceData)
+                            {
+                                <div class="field-row">
+                                    <span class="field-label">@field.Key:</span>
+                                    <span class="@GetFieldClass(field.Key, field.Value, item.SourceResourceData, item.MatchDetails)">
+                                        @field.Value
+                                    </span>
+                                </div>
+                            }
+                        }
+                        <div class="field-row">
+                            <span class="field-label">Resource ID:</span>
+                            <span class="field-value">@item.GoldenResourceId</span>
+                        </div>
+                    </div>
+
+                    <div class="resource-card">
+                        <h5>🟢 Source Resource</h5>
+                        @if (item.SourceResourceData != null)
+                        {
+                            @foreach (var field in item.SourceResourceData)
+                            {
+                                <div class="field-row">
+                                    <span class="field-label">@field.Key:</span>
+                                    <span class="@GetFieldClass(field.Key, field.Value, item.GoldenResourceData, item.MatchDetails)">
+                                        @field.Value
+                                    </span>
+                                </div>
+                            }
+                        }
+                        <div class="field-row">
+                            <span class="field-label">Resource ID:</span>
+                            <span class="field-value">@item.SourceResourceId</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-reject" @onclick="() => RejectMatch(item)">
+                        ❌ Not a Match
+                    </button>
+                    <button class="btn-approve" @onclick="() => ApproveMatch(item)">
+                        ✅ Confirm Match
+                    </button>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ResourceType { get; set; } = "Patient";
+
+    private List<ReviewQueueItemModel> queueItems = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadQueueAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadQueueAsync();
+    }
+
+    private async Task LoadQueueAsync()
+    {
+        loading = true;
+        queueItems = await MdmService.GetReviewQueueAsync(50);
+        // Filter by resource type
+        queueItems = queueItems.Where(q => q.ResourceType == ResourceType).ToList();
+        loading = false;
+    }
+
+    private async Task RefreshQueue()
+    {
+        await LoadQueueAsync();
+    }
+
+    private async Task ApproveMatch(ReviewQueueItemModel item)
+    {
+        try
+        {
+            var result = await MdmService.ApproveMatchAsync(item.LinkId, "current-user@claimsiq.com");
+            if (result != null)
+            {
+                queueItems.Remove(item);
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"Failed to approve match for linkId: {item.LinkId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error approving match: {ex.Message}");
+        }
+    }
+
+    private async Task RejectMatch(ReviewQueueItemModel item)
+    {
+        try
+        {
+            var result = await MdmService.RejectMatchAsync(item.LinkId, "current-user@claimsiq.com");
+            if (result != null)
+            {
+                queueItems.Remove(item);
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"Failed to reject match for linkId: {item.LinkId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rejecting match: {ex.Message}");
+        }
+    }
+
+    private string GetPriorityClass(int priority)
+    {
+        if (priority >= 8) return "priority-high";
+        if (priority >= 5) return "priority-medium";
+        return "priority-low";
+    }
+
+    private string GetScoreDisplay(object value)
+    {
+        if (value is double score)
+            return $"{score * 100:N0}%";
+        if (value is int intScore)
+            return $"{intScore}%";
+        return value?.ToString() ?? "N/A";
+    }
+
+    private string GetFieldClass(string fieldName, object? value, Dictionary<string, object>? otherData, Dictionary<string, object> matchDetails)
+    {
+        if (otherData == null || value == null)
+            return "field-value";
+
+        // Check if this field was part of the match
+        var normalizedFieldName = fieldName.ToLowerInvariant();
+        var matchedField = matchDetails.Keys.FirstOrDefault(k => k.ToLowerInvariant().Contains(normalizedFieldName));
+
+        if (matchedField != null)
+        {
+            var matchScore = matchDetails[matchedField];
+            var score = matchScore is double d ? d : 0.0;
+            
+            if (score >= 0.9)
+                return "field-value match-highlight";
+        }
+
+        // Check if values differ
+        if (otherData.TryGetValue(fieldName, out var otherValue))
+        {
+            if (value.ToString() != otherValue?.ToString())
+                return "field-value mismatch-highlight";
+        }
+
+        return "field-value";
+    }
+}

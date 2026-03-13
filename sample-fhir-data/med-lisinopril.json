@@ -1,0 +1,73 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "med-lisinopril",
+  "status": "active",
+  "intent": "order",
+  "medication": {
+    "concept": {
+      "coding": [
+        {
+          "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+          "code": "314076",
+          "display": "Lisinopril 10mg Tablet"
+        }
+      ],
+      "text": "Lisinopril 10mg Tablet"
+    }
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1",
+    "display": "John Smith"
+  },
+  "authoredOn": "2025-09-15",
+  "requester": {
+    "reference": "Practitioner/dr-johnson",
+    "display": "Dr. Sarah Johnson"
+  },
+  "dosageInstruction": [
+    {
+      "text": "Take 1 tablet by mouth once daily",
+      "timing": {
+        "repeat": {
+          "frequency": 1,
+          "period": 1,
+          "periodUnit": "d"
+        }
+      },
+      "route": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "26643006",
+            "display": "Oral route"
+          }
+        ]
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 10,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg"
+          }
+        }
+      ],
+      "patientInstruction": "Take in the morning. Monitor your blood pressure regularly."
+    }
+  ],
+  "dispenseRequest": {
+    "numberOfRepeatsAllowed": 5,
+    "quantity": {
+      "value": 90,
+      "unit": "tablets"
+    },
+    "expectedSupplyDuration": {
+      "value": 90,
+      "unit": "days"
+    },
+    "validityPeriod": {
+      "start": "2025-12-20"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "med-atorvastatin",
+  "status": "active",
+  "intent": "order",
+  "medication": {
+    "concept": {
+      "coding": [
+        {
+          "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+          "code": "617318",
+          "display": "Atorvastatin 20mg Tablet"
+        }
+      ],
+      "text": "Atorvastatin 20mg Tablet"
+    }
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1"
+  },
+  "authoredOn": "2025-08-10",
+  "requester": {
+    "reference": "Practitioner/dr-chen",
+    "display": "Dr. Michael Chen"
+  },
+  "dosageInstruction": [
+    {
+      "text": "Take 1 tablet by mouth once daily at bedtime",
+      "timing": {
+        "repeat": {
+          "frequency": 1,
+          "period": 1,
+          "periodUnit": "d",
+          "when": ["HS"]
+        }
+      },
+      "patientInstruction": "Take at bedtime for best cholesterol control. Avoid grapefruit juice."
+    }
+  ],
+  "dispenseRequest": {
+    "numberOfRepeatsAllowed": 2,
+    "validityPeriod": {
+      "start": "2025-12-15"
+    }
+  }
+}

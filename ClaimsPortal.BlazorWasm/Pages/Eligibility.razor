@@ -1,0 +1,436 @@
+@page "/eligibility"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject ClaimsApiService ApiService
+@inject NaturalLanguageService NlService
+
+<PageTitle>Eligibility Verification - ClaimsIQ Platform</PageTitle>
+
+<div class="eligibility-container">
+    <div class="page-header">
+        <h3>🔍 Real-Time Eligibility Verification</h3>
+        <p class="subtitle">270/271 HIPAA Transaction with Benefit Coverage Verification</p>
+    </div>
+
+    <div class="card">
+        <h4>Verify Patient Eligibility & Coverage</h4>
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Member/Patient ID <span class="required">*</span></label>
+                <input type="text" @bind="memberId" class="form-control" placeholder="MEM12345 or PAT001" />
+            </div>
+
+            <div class="form-group">
+                <label>Plan ID <span class="required">*</span></label>
+                <select @bind="planId" class="form-control">
+                    <option value="">Select Plan</option>
+                    <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                    <option value="PLAN001">Gold PPO</option>
+                    <option value="PLAN002">Silver HMO</option>
+                    <option value="PLAN003">Bronze HSA</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Service Date</label>
+                <input type="date" @bind="serviceDate" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label>Provider NPI (Optional)</label>
+                <input type="text" @bind="providerNpi" class="form-control" placeholder="1234567890" maxlength="10" />
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h5>🔍 Check Specific Benefit Coverage (Optional)</h5>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Benefit Description or Code</label>
+                    <input type="text" @bind="benefitQuery" class="form-control" placeholder="Enter CPT code (e.g., 99213) or description (e.g., Office Visit)" />
+                    <small class="help-text">Examples: 99213 (Office Visit), 80053 (Metabolic Panel), MRI, Physical Therapy</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button @onclick="VerifyEligibility" class="btn-primary" disabled="@isVerifying">
+                @if (isVerifying)
+                {
+                    <span>⏳ Verifying...</span>
+                }
+                else
+                {
+                    <span>✓ Verify Eligibility</span>
+                }
+            </button>
+            <button @onclick="ResetForm" class="btn-secondary">Clear Form</button>
+        </div>
+    </div>
+
+    @if (verificationResults.Any())
+    {
+        <div class="card results-card">
+            <div class="card-header">
+                <h4>📊 Eligibility Verification Results</h4>
+                <span class="result-count">@verificationResults.Count benefit(s) checked</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table eligibility-table">
+                    <thead>
+                        <tr>
+                            <th>Benefit/Service</th>
+                            <th>Coverage Status</th>
+                            <th>Deductible</th>
+                            <th>Copay</th>
+                            <th>Coinsurance</th>
+                            <th>OOP Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in verificationResults)
+                        {
+                            <tr class="@(result.IsCovered ? "covered-row" : "not-covered-row")">
+                                <td>
+                                    <strong>@result.BenefitName</strong>
+                                    @if (!string.IsNullOrEmpty(result.BenefitCode))
+                                    {
+                                        <br/><small class="code-badge">@result.BenefitCode</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (result.IsCovered)
+                                    {
+                                        <span class="status-badge covered">✅ Covered</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-badge not-covered">🚫 Not Covered</span>
+                                    }
+                                </td>
+                                <td class="amount">
+                                    @if (result.IsCovered)
+                                    {
+                                        <div>@($"${result.DeductibleMet:N0}") / @($"${result.DeductibleTotal:N0}")</div>
+                                        <small class="text-muted">@($"{result.DeductibleRemaining:C0}") remaining</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td class="amount">
+                                    @if (result.IsCovered && result.Copay > 0)
+                                    {
+                                        <strong>@($"{result.Copay:C0}")</strong>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="amount">
+                                    @if (result.IsCovered && result.Coinsurance > 0)
+                                    {
+                                        <strong>@($"{result.Coinsurance}%")</strong>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="amount">
+                                    @if (result.IsCovered)
+                                    {
+                                        <div>@($"${result.OopMet:N0}") / @($"${result.OopMax:N0}")</div>
+                                        <small class="text-muted">@($"{result.OopRemaining:C0}") remaining</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn-view" @onclick="() => ShowDetails(result.BenefitId)">
+                                        @(selectedBenefitId == result.BenefitId ? "▼ Hide" : "▶ Details")
+                                    </button>
+                                </td>
+                            </tr>
+                            @if (selectedBenefitId == result.BenefitId)
+                            {
+                                <tr class="detail-row">
+                                    <td colspan="7">
+                                        <div class="benefit-details-panel">
+                                            <div class="detail-grid">
+                                                <div class="detail-section">
+                                                    <h6>💰 Cost Sharing Details</h6>
+                                                    <div class="detail-items">
+                                                        <div class="detail-item">
+                                                            <span class="label">Network:</span>
+                                                            <span class="value">@result.NetworkTier</span>
+                                                        </div>
+                                                        <div class="detail-item">
+                                                            <span class="label">Authorization Required:</span>
+                                                            <span class="value">@(result.RequiresPriorAuth ? "Yes" : "No")</span>
+                                                        </div>
+                                                        @if (result.IsCovered)
+                                                        {
+                                                            <div class="detail-item">
+                                                                <span class="label">Annual Limit:</span>
+                                                                <span class="value">@(result.AnnualLimit > 0 ? $"${result.AnnualLimit:N0}" : "Unlimited")</span>
+                                                            </div>
+                                                            <div class="detail-item">
+                                                                <span class="label">Lifetime Limit:</span>
+                                                                <span class="value">@(result.LifetimeLimit > 0 ? $"${result.LifetimeLimit:N0}" : "Unlimited")</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <div class="detail-section">
+                                                    <h6>📋 Coverage Information</h6>
+                                                    <div class="detail-items">
+                                                        @if (result.IsCovered)
+                                                        {
+                                                            <div class="detail-item">
+                                                                <span class="label">Plan Pays:</span>
+                                                                <span class="value success">@result.PlanPaysPercentage%</span>
+                                                            </div>
+                                                            <div class="detail-item">
+                                                                <span class="label">Patient Pays:</span>
+                                                                <span class="value warning">@result.PatientPaysPercentage%</span>
+                                                            </div>
+                                                            @if (!string.IsNullOrEmpty(result.CoverageNotes))
+                                                            {
+                                                                <div class="detail-item full-width">
+                                                                    <span class="label">Coverage Notes:</span>
+                                                                    <span class="value">@result.CoverageNotes</span>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="detail-item full-width">
+                                                                <span class="label">Status:</span>
+                                                                <span class="value warning">Not covered under current plan</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-error">
+            <strong>❌ Error:</strong> @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    private string memberId = string.Empty;
+    private string planId = string.Empty;
+    private DateTime serviceDate = DateTime.Today;
+    private string providerNpi = string.Empty;
+    private string benefitQuery = string.Empty;
+    private bool isVerifying = false;
+    private string? errorMessage;
+    private string? selectedBenefitId;
+    private List<EligibilityVerificationResult> verificationResults = new();
+
+    private async Task VerifyEligibility()
+    {
+        if (string.IsNullOrWhiteSpace(memberId) || string.IsNullOrWhiteSpace(planId))
+        {
+            errorMessage = "Please enter Member ID and select a Plan";
+            return;
+        }
+
+        errorMessage = null;
+        verificationResults.Clear();
+        selectedBenefitId = null;
+        isVerifying = true;
+
+        try
+        {
+            // TODO: Call Azure FHIR Server for real eligibility data
+            // Example: GET {fhir-server-url}/CoverageEligibilityResponse?patient={memberId}&coverage={planId}
+            // For now, simulating Azure FHIR response
+            await Task.Delay(800);
+
+            // In production, this would be:
+            // var fhirResponse = await FhirClient.GetEligibilityAsync(memberId, planId, benefitQuery);
+            // verificationResults = MapFhirToBenefitResults(fhirResponse);
+
+            if (!string.IsNullOrWhiteSpace(benefitQuery))
+            {
+                // Check specific benefit from FHIR server
+                var result = await GetBenefitFromFhir(benefitQuery);
+                verificationResults.Add(result);
+            }
+            else
+            {
+                // Get general eligibility with common benefits from FHIR
+                var commonBenefits = await GetCommonBenefitsFromFhir();
+                verificationResults.AddRange(commonBenefits);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Verification failed: {ex.Message}";
+        }
+        finally
+        {
+            isVerifying = false;
+        }
+    }
+
+    private async Task<EligibilityVerificationResult> GetBenefitFromFhir(string query)
+    {
+        // TODO: Replace with actual Azure FHIR API call
+        // GET {fhir-server}/CoverageEligibilityResponse?service-code={cptCode}
+        await Task.Delay(100);
+        return GenerateBenefitResult(query);
+    }
+
+    private async Task<List<EligibilityVerificationResult>> GetCommonBenefitsFromFhir()
+    {
+        // TODO: Replace with actual Azure FHIR API call
+        // GET {fhir-server}/CoverageEligibilityResponse?patient={memberId}&coverage={planId}
+        await Task.Delay(100);
+        
+        return new List<EligibilityVerificationResult>
+        {
+            GenerateBenefitResult("Office Visit - Primary Care", "99213"),
+            GenerateBenefitResult("Office Visit - Specialist", "99214"),
+            GenerateBenefitResult("Preventive Care Exam", "99385"),
+            GenerateBenefitResult("Emergency Room Visit", "99285"),
+            GenerateBenefitResult("Inpatient Hospital", "99223"),
+            GenerateBenefitResult("Lab Tests", "80053")
+        };
+    }
+
+    private EligibilityVerificationResult GenerateBenefitResult(string query, string? code = null)
+    {
+        // TODO: This should parse actual FHIR CoverageEligibilityResponse resource
+        var random = new Random();
+        var isCovered = random.Next(0, 10) > 1; // 90% covered
+        
+        return new EligibilityVerificationResult
+        {
+            BenefitId = Guid.NewGuid().ToString(),
+            BenefitName = query,
+            BenefitCode = code ?? ExtractCode(query),
+            BenefitCategory = DetermineCategoryFromQuery(query),
+            IsCovered = isCovered,
+            DeductibleMet = isCovered ? 1250m : 0m,
+            DeductibleTotal = 2000m,
+            DeductibleRemaining = isCovered ? 750m : 2000m,
+            Copay = isCovered ? DetermineCopay(query) : 0m,
+            Coinsurance = isCovered ? DetermineCoinsurance(query) : 0,
+            OopMet = 2400m,
+            OopMax = 8000m,
+            OopRemaining = 5600m,
+            NetworkTier = "Tier 1 - In Network",
+            RequiresPriorAuth = query.Contains("MRI") || query.Contains("Surgery") || query.Contains("Hospital"),
+            AnnualLimit = query.Contains("Physical Therapy") ? 5000m : 0m,
+            LifetimeLimit = 0m,
+            PlanPaysPercentage = isCovered ? (100 - DetermineCoinsurance(query)) : 0,
+            PatientPaysPercentage = isCovered ? DetermineCoinsurance(query) : 100,
+            CoverageNotes = isCovered ? "Benefit is covered under your current plan. Verify provider is in-network for best rates." : string.Empty
+        };
+    }
+
+    private string ExtractCode(string query)
+    {
+        // Check if query contains a CPT code pattern (5 digits)
+        var match = System.Text.RegularExpressions.Regex.Match(query, @"\b\d{5}\b");
+        return match.Success ? match.Value : "";
+    }
+
+    private string DetermineCategoryFromQuery(string query)
+    {
+        var lowerQuery = query.ToLower();
+        if (lowerQuery.Contains("office") || lowerQuery.Contains("visit")) return "Professional Services";
+        if (lowerQuery.Contains("hospital") || lowerQuery.Contains("emergency")) return "Hospital Services";
+        if (lowerQuery.Contains("lab") || lowerQuery.Contains("test")) return "Laboratory";
+        if (lowerQuery.Contains("preventive") || lowerQuery.Contains("exam")) return "Preventive Care";
+        if (lowerQuery.Contains("surgery")) return "Surgical Services";
+        if (lowerQuery.Contains("therapy")) return "Therapy Services";
+        return "Medical Services";
+    }
+
+    private decimal DetermineCopay(string query)
+    {
+        var lowerQuery = query.ToLower();
+        if (lowerQuery.Contains("primary")) return 25m;
+        if (lowerQuery.Contains("specialist")) return 50m;
+        if (lowerQuery.Contains("emergency")) return 350m;
+        if (lowerQuery.Contains("preventive")) return 0m;
+        return 35m;
+    }
+
+    private int DetermineCoinsurance(string query)
+    {
+        var lowerQuery = query.ToLower();
+        if (lowerQuery.Contains("preventive")) return 0;
+        if (lowerQuery.Contains("hospital") || lowerQuery.Contains("surgery")) return 20;
+        if (lowerQuery.Contains("therapy")) return 30;
+        return 20;
+    }
+
+    private void ShowDetails(string benefitId)
+    {
+        selectedBenefitId = selectedBenefitId == benefitId ? null : benefitId;
+    }
+
+    private void ResetForm()
+    {
+        memberId = string.Empty;
+        planId = string.Empty;
+        serviceDate = DateTime.Today;
+        providerNpi = string.Empty;
+        benefitQuery = string.Empty;
+        verificationResults.Clear();
+        selectedBenefitId = null;
+        errorMessage = null;
+    }
+
+    // Model class
+    private class EligibilityVerificationResult
+    {
+        public string BenefitId { get; set; } = string.Empty;
+        public string BenefitName { get; set; } = string.Empty;
+        public string BenefitCode { get; set; } = string.Empty;
+        public string BenefitCategory { get; set; } = string.Empty;
+        public bool IsCovered { get; set; }
+        public decimal DeductibleMet { get; set; }
+        public decimal DeductibleTotal { get; set; }
+        public decimal DeductibleRemaining { get; set; }
+        public decimal Copay { get; set; }
+        public int Coinsurance { get; set; }
+        public decimal OopMet { get; set; }
+        public decimal OopMax { get; set; }
+        public decimal OopRemaining { get; set; }
+        public string NetworkTier { get; set; } = string.Empty;
+        public bool RequiresPriorAuth { get; set; }
+        public decimal AnnualLimit { get; set; }
+        public decimal LifetimeLimit { get; set; }
+        public int PlanPaysPercentage { get; set; }
+        public int PatientPaysPercentage { get; set; }
+        public string CoverageNotes { get; set; } = string.Empty;
+    }
+}

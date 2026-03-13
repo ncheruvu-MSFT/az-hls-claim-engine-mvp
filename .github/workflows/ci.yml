@@ -1,0 +1,111 @@
+name: CI - Build & Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '18.x'
+
+jobs:
+  test-dotnet:
+    name: Test .NET Function App
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ./azure-claims-rules-mvp-starter/src/ClaimsRules.Api
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ./azure-claims-rules-mvp-starter/src/ClaimsRules.Api
+
+    - name: Run tests
+      run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      working-directory: ./tests/ClaimsRules.Api.Tests
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dotnet-test-results
+        path: '**/TestResults/**'
+
+  lint-bicep:
+    name: Lint Bicep Templates
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Azure CLI
+      uses: azure/CLI@v2
+      with:
+        azcliversion: latest
+
+    - name: Lint Bicep files
+      run: |
+        az bicep build --file infra/main.bicep
+        echo "✓ Bicep templates are valid"
+
+  build-react:
+    name: Build React Portal
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: claims-portal/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+      working-directory: ./claims-portal
+
+    - name: Build React app
+      run: npm run build
+      working-directory: ./claims-portal
+      env:
+        CI: false
+        REACT_APP_API_BASE: https://funcclaimstest001ncv.azurewebsites.net/api
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: react-build
+        path: claims-portal/build/
+
+  summary:
+    name: CI Summary
+    needs: [test-dotnet, lint-bicep, build-react]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check results
+      run: |
+        echo "## CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- .NET Tests: ${{ needs.test-dotnet.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Bicep Lint: ${{ needs.lint-bicep.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- React Build: ${{ needs.build-react.result }}" >> $GITHUB_STEP_SUMMARY

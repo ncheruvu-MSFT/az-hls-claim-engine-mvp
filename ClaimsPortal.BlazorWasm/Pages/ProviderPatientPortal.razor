@@ -1,0 +1,567 @@
+@page "/provider-patient-portal"
+@using ClaimsPortal.BlazorWasm.Services
+@inject MemberPortalService MemberService
+@inject NavigationManager Navigation
+
+<PageTitle>Provider Patient Portal - ClaimsIQ</PageTitle>
+
+<div class="page-container external-portal">
+    <div class="page-header" style="background: linear-gradient(135deg, #00897b 0%, #00695c 100%);">
+        <h3>🏥 Provider Patient Portal</h3>
+        <p class="subtitle">Epic-style clinical interface for patient care management</p>
+    </div>
+
+    <!-- Patient Search & Selection -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>🔍 Patient Lookup</h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Patient ID</label>
+                    <input type="text" class="form-control" @bind="patientId" placeholder="PAT001" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Patient Name</label>
+                    <input type="text" class="form-control" @bind="patientName" placeholder="Search by name" disabled />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="LoadPatientData" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span>🔄 Loading...</span>
+                        }
+                        else
+                        {
+                            <span>🔍 Load Patient</span>
+                        }
+                    </button>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    <strong>⚠️ Error:</strong> @errorMessage
+                    <br />
+                    <small>Try demo Patient IDs: <strong>MEM12345</strong>, <strong>SUB001</strong>, <strong>DEP001</strong>, or <strong>PAT001</strong></small>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info mt-3" role="alert">
+                    <strong>💡 Tip:</strong> Use sample Patient IDs: <strong>MEM12345</strong>, <strong>SUB001</strong>, <strong>DEP001</strong>, or <strong>PAT001</strong>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (isPatientLoaded)
+    {
+        <!-- Patient Banner -->
+        <div class="card patient-banner mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">👤 @patientName</h4>
+                        <p class="mb-0 text-muted">Patient ID: @patientId | DOB: @patientDob | Age: @patientAge</p>
+                    </div>
+                    <div>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clinical Tabs -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "overview" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "overview"'>
+                    <span class="tab-icon">📋</span> Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "medications" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "medications"'>
+                    <span class="tab-icon">💊</span> Medications
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "testresults" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "testresults"'>
+                    <span class="tab-icon">📊</span> Test Results
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "visits" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "visits"'>
+                    <span class="tab-icon">🏥</span> Visits & Encounters
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "problems" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "problems"'>
+                    <span class="tab-icon">🩺</span> Problem List
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            @if (activeTab == "overview")
+            {
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>📋 Recent Activity</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Last Visit: <strong>12/15/2025</strong></p>
+                                <p class="text-muted">Next Appointment: <strong>01/25/2026</strong></p>
+                                <p class="text-muted">Active Medications: <strong>@medicationCount</strong></p>
+                                <p class="text-muted">Pending Lab Results: <strong>@testResultCount</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>⚠️ Clinical Alerts</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning mb-2">
+                                    <strong>Drug Interaction:</strong> Check Metformin + Lisinopril
+                                </div>
+                                <div class="alert alert-info mb-2">
+                                    <strong>Preventive Care:</strong> Annual wellness visit due
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (activeTab == "medications")
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>💊 Active Medications</h4>
+                        <button class="btn btn-primary btn-sm">➕ Prescribe New</button>
+                    </div>
+                    <div class="card-body">
+                        @if (isLoading)
+                        {
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Loading medications...</p>
+                            </div>
+                        }
+                        else if (medications == null || !medications.Any())
+                        {
+                            <div class="alert alert-info">
+                                <strong>ℹ️ No medications found</strong> for this patient.
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var med in medications)
+                            {
+                                <div class="medication-card mb-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h5>@med.Name</h5>
+                                            <p class="mb-1"><strong>Dosage:</strong> @med.Dosage</p>
+                                            <p class="mb-1"><strong>Frequency:</strong> @med.Frequency</p>
+                                            <p class="mb-1"><strong>Prescriber:</strong> @med.Prescriber</p>
+                                            <p class="mb-1 text-muted"><small>Last Filled: @med.LastFilled</small></p>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-success">@med.Status</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-primary me-2">✏️ Modify</button>
+                                        <button class="btn btn-sm btn-outline-secondary me-2">🔄 Renew</button>
+                                        <button class="btn btn-sm btn-outline-danger">🚫 Discontinue</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (activeTab == "testresults")
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>📊 Laboratory & Diagnostic Results</h4>
+                        <button class="btn btn-primary btn-sm">➕ Order New Test</button>
+                    </div>
+                    <div class="card-body">
+                        @if (isLoading)
+                        {
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Loading test results...</p>
+                            </div>
+                        }
+                        else if (testResults == null || !testResults.Any())
+                        {
+                            <div class="alert alert-info">
+                                <strong>ℹ️ No test results found</strong> for this patient.
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var result in testResults)
+                            {
+                                <div class="test-result-card mb-3" @onclick="() => ExpandTestResult(result.ReportId)">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h5>@result.TestName</h5>
+                                            <p class="mb-1"><strong>Date:</strong> @result.CollectionDate</p>
+                                            <p class="mb-1"><strong>Ordered By:</strong> @result.OrderedBy</p>
+                                            @if (result.HasAbnormal)
+                                            {
+                                                <span class="badge bg-warning text-dark">⚠️ Abnormal Values</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">✅ Normal</span>
+                                            }
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                @(expandedResultId == result.ReportId ? "▼ Collapse" : "▶ Expand")
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    @if (expandedResultId == result.ReportId)
+                                    {
+                                        <div class="mt-3">
+                                            <div class="alert alert-info">
+                                                <strong>ℹ️ Note:</strong> Detailed observations require loading report details.
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (activeTab == "visits")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h4>🏥 Visits & Encounters</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>ℹ️ Coming Soon:</strong> Visit history, encounter notes, and care team documentation
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (activeTab == "problems")
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h4>🩺 Problem List</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>ℹ️ Coming Soon:</strong> Active diagnoses, chronic conditions, and care gaps
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <h4 class="text-muted">👆 Enter a Patient ID to get started</h4>
+                <p class="text-muted">Try demo Patient ID: <strong>patient-example</strong></p>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .patient-banner {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-left: 4px solid #2196f3;
+    }
+
+    .medication-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        background: #fafafa;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .medication-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .test-result-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        background: #fafafa;
+        cursor: pointer;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .test-result-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-tabs .nav-link {
+        color: #666;
+        font-weight: 600;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #00897b;
+        border-bottom: 3px solid #00897b;
+    }
+
+    .tab-icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+</style>
+
+@code {
+    private string patientId = "";
+    private string patientName = "";
+    private string patientDob = "";
+    private int patientAge = 0;
+    private bool isLoading = false;
+    private bool isPatientLoaded = false;
+    private string errorMessage = "";
+    private string activeTab = "overview";
+    private string? expandedResultId = null;
+
+    private int medicationCount = 0;
+    private int testResultCount = 0;
+
+    private List<MedicationDetail>? medications;
+    private List<TestResult>? testResults;
+
+    protected override async System.Threading.Tasks.Task OnInitializedAsync()
+    {
+        // Pre-fill demo patient
+        patientId = "MEM12345";
+    }
+
+    private async System.Threading.Tasks.Task LoadPatientData()
+    {
+        if (string.IsNullOrWhiteSpace(patientId))
+        {
+            errorMessage = "Please enter a Patient ID";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = "";
+
+        try
+        {
+            // Check if it's a known sample patient ID
+            if (IsKnownSamplePatient(patientId))
+            {
+                LoadSamplePatientData(patientId);
+                isPatientLoaded = true;
+                return;
+            }
+
+            // Try FHIR server lookup
+            var authResult = await MemberService.AuthenticateMemberAsync(patientId, "0000");
+            if (authResult != null && authResult.IsAuthenticated)
+            {
+                patientName = authResult.FullName;
+                if (!string.IsNullOrEmpty(authResult.DateOfBirth))
+                {
+                    var dob = DateTime.Parse(authResult.DateOfBirth);
+                    patientDob = dob.ToString("MM/dd/yyyy");
+                    patientAge = DateTime.Now.Year - dob.Year;
+                }
+                patientId = authResult.PatientId;
+
+                // Load medications
+                medications = await MemberService.GetMedicationsDetailedAsync(patientId);
+                medicationCount = medications?.Count ?? 0;
+
+                // Load test results
+                testResults = await MemberService.GetTestResultsAsync(patientId);
+                testResultCount = testResults?.Count ?? 0;
+
+                isPatientLoaded = true;
+            }
+            else
+            {
+                errorMessage = "Patient not found. Try sample IDs: MEM12345, SUB001, DEP001, or PAT001";
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            if (httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                errorMessage = "FHIR server access denied. Use sample IDs: MEM12345, SUB001, DEP001, or PAT001";
+            }
+            else
+            {
+                errorMessage = $"Unable to load patient data. Use sample IDs: MEM12345, SUB001, DEP001, or PAT001";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading patient. Use sample IDs: MEM12345, SUB001, DEP001, or PAT001";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool IsKnownSamplePatient(string id)
+    {
+        var sampleIds = new[] { "MEM12345", "SUB001", "DEP001", "DEP002", "DEP003", "PAT001" };
+        return sampleIds.Any(sid => sid.Equals(id, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void LoadSamplePatientData(string id)
+    {
+        // Load sample patient data based on ID
+        switch (id.ToUpper())
+        {
+            case "MEM12345":
+            case "SUB001":
+                patientName = "John Smith";
+                patientDob = "05/15/1975";
+                patientAge = 50;
+                break;
+            case "DEP001":
+                patientName = "Mary Smith";
+                patientDob = "08/22/1978";
+                patientAge = 47;
+                break;
+            case "DEP002":
+                patientName = "Michael Smith";
+                patientDob = "03/10/2010";
+                patientAge = 15;
+                break;
+            case "PAT001":
+                patientName = "Sarah Johnson";
+                patientDob = "11/05/1985";
+                patientAge = 40;
+                break;
+            default:
+                patientName = "Sample Patient";
+                patientDob = "01/01/1980";
+                patientAge = 46;
+                break;
+        }
+
+        // Load sample medications
+        medications = new List<MedicationDetail>
+        {
+            new MedicationDetail
+            {
+                MedicationName = "Lisinopril 10mg",
+                Dosage = "10mg",
+                Frequency = "Once Daily",
+                Route = "Oral",
+                StartDate = "01/15/2025",
+                Prescriber = "Dr. James Wilson",
+                Status = "Active",
+                RxNumber = "RX-2025-001",
+                Refills = 3,
+                LastFilled = "01/15/2025"
+            },
+            new MedicationDetail
+            {
+                MedicationName = "Metformin 500mg",
+                Dosage = "500mg",
+                Frequency = "Twice Daily",
+                Route = "Oral",
+                StartDate = "11/20/2024",
+                Prescriber = "Dr. Sarah Chen",
+                Status = "Active",
+                RxNumber = "RX-2024-875",
+                Refills = 5,
+                LastFilled = "12/20/2024"
+            },
+            new MedicationDetail
+            {
+                MedicationName = "Atorvastatin 20mg",
+                Dosage = "20mg",
+                Frequency = "Once Daily at Bedtime",
+                Route = "Oral",
+                StartDate = "06/10/2024",
+                Prescriber = "Dr. James Wilson",
+                Status = "Active",
+                RxNumber = "RX-2024-456",
+                Refills = 6,
+                LastFilled = "01/10/2025"
+            }
+        };
+        medicationCount = medications.Count;
+
+        // Load sample test results
+        testResults = new List<TestResult>
+        {
+            new TestResult
+            {
+                Id = "TEST-001",
+                TestName = "Comprehensive Metabolic Panel",
+                Category = "Laboratory",
+                OrderedDate = "12/28/2025",
+                ResultDate = "12/29/2025",
+                Status = "Final",
+                OrderingProvider = "Dr. James Wilson",
+                PerformingLab = "Quest Diagnostics"
+            },
+            new TestResult
+            {
+                Id = "TEST-002",
+                TestName = "Lipid Panel",
+                Category = "Laboratory",
+                OrderedDate = "12/28/2025",
+                ResultDate = "12/29/2025",
+                Status = "Final",
+                OrderingProvider = "Dr. James Wilson",
+                PerformingLab = "Quest Diagnostics"
+            },
+            new TestResult
+            {
+                Id = "TEST-003",
+                TestName = "HbA1c",
+                Category = "Laboratory",
+                OrderedDate = "12/28/2025",
+                ResultDate = "12/29/2025",
+                Status = "Final",
+                OrderingProvider = "Dr. Sarah Chen",
+                PerformingLab = "LabCorp"
+            }
+        };
+        testResultCount = testResults.Count;
+    }
+
+    private void ExpandTestResult(string resultId)
+    {
+        expandedResultId = expandedResultId == resultId ? null : resultId;
+    }
+}

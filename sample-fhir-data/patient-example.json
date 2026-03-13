@@ -1,0 +1,45 @@
+{
+  "resourceType": "Patient",
+  "id": "example-patient-1",
+  "identifier": [
+    {
+      "system": "http://claimsiq.com/member-id",
+      "value": "SUB001"
+    },
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "123-45-6789"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Smith",
+      "given": ["John", "Michael"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "(555) 123-4567",
+      "use": "home"
+    },
+    {
+      "system": "email",
+      "value": "john.smith@email.com"
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1980-01-15",
+  "address": [
+    {
+      "use": "home",
+      "line": ["123 Main Street"],
+      "city": "Los Angeles",
+      "state": "CA",
+      "postalCode": "90001",
+      "country": "US"
+    }
+  ]
+}

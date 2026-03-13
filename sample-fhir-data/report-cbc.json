@@ -1,0 +1,56 @@
+{
+  "resourceType": "DiagnosticReport",
+  "id": "report-cbc-jan2026",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+          "code": "LAB",
+          "display": "Laboratory"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "58410-2",
+        "display": "Complete blood count (CBC) panel - Blood by Automated count"
+      }
+    ],
+    "text": "Complete Blood Count"
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1",
+    "display": "John Smith"
+  },
+  "effectiveDateTime": "2026-01-05T08:30:00Z",
+  "issued": "2026-01-05T14:00:00Z",
+  "performer": [
+    {
+      "reference": "Practitioner/dr-johnson",
+      "display": "Dr. Sarah Johnson"
+    }
+  ],
+  "result": [
+    {
+      "reference": "Observation/cbc-wbc"
+    },
+    {
+      "reference": "Observation/cbc-rbc"
+    },
+    {
+      "reference": "Observation/cbc-hemoglobin"
+    },
+    {
+      "reference": "Observation/cbc-hematocrit"
+    },
+    {
+      "reference": "Observation/cbc-platelet"
+    }
+  ],
+  "conclusion": "Mild anemia noted. Patient shows low RBC count, hemoglobin, and hematocrit. Recommend iron supplementation and follow-up in 3 months."
+}

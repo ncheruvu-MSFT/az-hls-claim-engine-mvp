@@ -1,0 +1,33 @@
+{
+  "resourceType": "Practitioner",
+  "id": "dr-chen",
+  "identifier": [
+    {
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "9876543210"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Chen",
+      "given": ["Michael"],
+      "prefix": ["Dr."],
+      "suffix": ["MD"]
+    }
+  ],
+  "qualification": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://nucc.org/provider-taxonomy",
+            "code": "207RC0000X",
+            "display": "Cardiovascular Disease"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "resourceType": "Observation",
+  "id": "cbc-wbc",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "laboratory"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "6690-2",
+        "display": "Leukocytes [#/volume] in Blood"
+      }
+    ],
+    "text": "WBC Count"
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1"
+  },
+  "effectiveDateTime": "2026-01-05T08:30:00Z",
+  "valueQuantity": {
+    "value": 8.5,
+    "unit": "10*3/uL",
+    "system": "http://unitsofmeasure.org",
+    "code": "10*3/uL"
+  },
+  "interpretation": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+          "code": "N",
+          "display": "Normal"
+        }
+      ]
+    }
+  ],
+  "referenceRange": [
+    {
+      "low": {
+        "value": 4.5,
+        "unit": "10*3/uL"
+      },
+      "high": {
+        "value": 11.0,
+        "unit": "10*3/uL"
+      }
+    }
+  ]
+}

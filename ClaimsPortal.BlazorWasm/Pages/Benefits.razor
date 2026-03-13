@@ -1,0 +1,795 @@
+@page "/benefits"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@using Microsoft.JSInterop
+@inject ClaimsApiService ApiService
+@inject NaturalLanguageService NlService
+@inject BenefitPlanService PlanService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Product Configuration - ClaimsIQ Platform</PageTitle>
+
+<div class="benefits-container">
+    <div class="page-header">
+        <div class="header-content">
+            <div>
+                <h3>🏥 Product Configuration Manager</h3>
+                <p class="subtitle">Configure health plans, benefits, and CMS compliance settings</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" @onclick="ShowAddPlanModal">
+                    ➕ Add New Plan
+                </button>
+                <button class="btn-secondary" @onclick="ExportToCMS">
+                    📤 Export to CMS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="@(isError ? "alert-error" : "alert-success")">
+            @statusMessage
+        </div>
+    }
+
+    <!-- AI Configuration Assistant -->
+    <div class="nl-assistant">
+        <h3>🤖 AI Configuration Assistant</h3>
+        <p class="assistant-description">Configure benefits using natural language. Ask about CPT codes, state regulations, or CMS requirements.</p>
+        <div class="assistant-input-group">
+            <textarea 
+                @bind="nlQuery" 
+                placeholder="Example: 'Add office visit benefit with $25 copay for CPT 99213, prior auth required per CMS guidelines for California members'"
+                rows="3"></textarea>
+            <button @onclick="ConfigureWithAI" class="btn-ask">🪄 Configure with AI</button>
+        </div>
+        
+        @if (nlResponse != null)
+        {
+            <div class="nl-response">
+                <div class="response-content">
+                    <strong>💡 Intent Detected:</strong> @nlResponse.ParsedIntent
+                    <br/><strong>Confidence:</strong> @($"{nlResponse.Confidence:P0}")
+                </div>
+                @if (!string.IsNullOrEmpty(nlResponse.ConfigurationSuggestion))
+                {
+                    <div class="config-preview">
+                        <strong>📋 Configuration Preview:</strong>
+                        <pre>@nlResponse.ConfigurationSuggestion</pre>
+                        
+                        @if (nlResponse.CPTCodesIdentified.Any())
+                        {
+                            <div style="margin-top: 1rem;">
+                                <strong>🏥 CPT Codes:</strong>
+                                <ul>
+                                    @foreach (var code in nlResponse.CPTCodesIdentified)
+                                    {
+                                        <li>@((object)code)</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+
+
+                        
+                        @if (!string.IsNullOrEmpty(nlResponse.CMSGuidance))
+                        {
+                            <div style="margin-top: 1rem;">
+                                <strong>🏛️ CMS Guidance:</strong>
+                                <p>@nlResponse.CMSGuidance</p>
+                            </div>
+                        }
+                        <button class="btn-apply" @onclick="ApplyAIConfiguration">✅ Apply Configuration</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading">Loading benefit plans...</div>
+    }
+    else if (plans.Count == 0)
+    {
+        <div class="no-data">
+            <p>No benefit plans configured</p>
+            <button class="btn-primary" @onclick="ShowAddPlanModal">Create Your First Plan</button>
+        </div>
+    }
+    else
+    {
+        <div class="plans-grid">
+            @foreach (var plan in plans)
+            {
+                <div class="plan-card @(selectedPlan?.PlanId == plan.PlanId ? "selected" : "")" 
+                     @onclick="() => SelectPlan(plan)">
+                    <div class="plan-header">
+                        <div class="plan-header-content">
+                            <h4>@plan.PlanName</h4>
+                            <span class="plan-id">Plan ID: @plan.PlanId</span>
+                        </div>
+                        <div class="plan-header-actions">
+                            <span class="plan-type-badge plan-type-@plan.PlanType.ToLower()">@plan.PlanType</span>
+                            <button class="btn-icon" @onclick="() => EditPlan(plan)" @onclick:stopPropagation="true" title="Edit Plan">✏️</button>
+                        </div>
+                    </div>
+                    <div class="plan-summary">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">Deductible</span>
+                                <span class="summary-value">@($"{plan.Deductible:C0}")</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">OOP Max</span>
+                                <span class="summary-value">@($"{plan.OutOfPocketMax:C0}")</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Coinsurance</span>
+                                <span class="summary-value">@($"{plan.CoinsuranceRate * 100:N0}%")</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Copay</span>
+                                <span class="summary-value">@($"{plan.Copay:C0}")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="plan-footer">
+                        <span class="effective-date">📅 Effective: @plan.StartDate.ToString("MM/dd/yyyy") - @plan.EndDate.ToString("MM/dd/yyyy")</span>
+                        @if (plan.RequiresPriorAuth)
+                        {
+                            <span class="prior-auth-badge">⚠️ Prior Auth Required</span>
+                        }
+                        <span class="expand-indicator">@(selectedPlan?.PlanId == plan.PlanId ? "▼ Click to collapse" : "▶ Click to view details")</span>
+                    </div>
+
+                    @if (selectedPlan?.PlanId == plan.PlanId)
+                    {
+                        <div class="plan-expanded">
+                            <div class="benefit-editor">
+                                <div class="editor-header">
+                                    <h4>📝 Benefit Configuration</h4>
+                                    <div class="editor-actions">
+                                        <button class="btn-secondary-sm" @onclick="() => isEditing = !isEditing">
+                                            @(isEditing ? "👁️ View Mode" : "✏️ Edit Mode")
+                                        </button>
+                                        <button class="btn-secondary-sm" @onclick="() => showFhirMapping = !showFhirMapping">
+                                            @(showFhirMapping ? "Hide FHIR" : "Show FHIR")
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (isEditing)
+                                {
+                                    <div class="edit-form">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Plan Name</label>
+                                                <input type="text" @bind="plan.PlanName" class="form-control" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Plan Type</label>
+                                                <select @bind="plan.PlanType" class="form-control">
+                                                    <option value="HMO">HMO</option>
+                                                    <option value="PPO">PPO</option>
+                                                    <option value="EPO">EPO</option>
+                                                    <option value="POS">POS</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Deductible ($)</label>
+                                                <input type="number" @bind="plan.Deductible" class="form-control" step="100" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Out-of-Pocket Max ($)</label>
+                                                <input type="number" @bind="plan.OutOfPocketMax" class="form-control" step="100" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Coinsurance (%)</label>
+                                                <input type="number" @bind="plan.CoinsuranceRate" class="form-control" step="0.01" min="0" max="1" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Copay ($)</label>
+                                                <input type="number" @bind="plan.Copay" class="form-control" step="5" />
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox" @bind="plan.RequiresPriorAuth" />
+                                                Requires Prior Authorization (per CMS guidelines)
+                                            </label>
+                                        </div>
+
+                                        <div class="form-actions">
+                                            <button class="btn-primary" @onclick="SavePlan">💾 Save Changes</button>
+                                            <button class="btn-secondary" @onclick="CancelEdit">❌ Cancel</button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="benefit-details-grid">
+                                        <div class="benefit-section">
+                                            <h5>💰 Cost Sharing</h5>
+                                            <div class="benefit-items">
+                                                <div class="benefit-item">
+                                                    <span class="label">Individual Deductible:</span>
+                                                    <span class="value">@($"{plan.Deductible:C0}")</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">OOP Maximum:</span>
+                                                    <span class="value">@($"{plan.OutOfPocketMax:C0}")</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">Coinsurance:</span>
+                                                    <span class="value">@($"{plan.Coinsurance}%")</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">Primary Care Copay:</span>
+                                                    <span class="value">@($"{plan.PrimaryCopay:C0}")</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">Specialist Copay:</span>
+                                                    <span class="value">@($"{plan.SpecialistCopay:C0}")</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="benefit-section">
+                                            <h5>🏥 Covered Services</h5>
+                                            <div class="benefit-items">
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Primary Care Visits</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Specialist Visits</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Emergency Room</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Inpatient Hospital</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Outpatient Surgery</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Lab & X-Ray</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Preventive Care</span>
+                                                </div>
+                                                <div class="benefit-item">
+                                                    <span class="label">✅ Mental Health</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="benefit-section">
+                                            <h5>🌐 Network Providers (@plan.InNetworkProviders.Count)</h5>
+                                            <div class="providers-list">
+                                                @foreach (var provider in plan.InNetworkProviders.Take(5))
+                                                {
+                                                    <div class="provider-card">
+                                                        <strong>@provider.Name</strong><br/>
+                                                        <small>@provider.Specialty | NPI: @provider.NPI</small>
+                                                    </div>
+                                                }
+                                                @if (plan.InNetworkProviders.Count > 5)
+                                                {
+                                                    <div class="provider-card more">+@(plan.InNetworkProviders.Count - 5) more providers</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (showFhirMapping)
+                                {
+                                    <div class="fhir-section">
+                                        <div class="fhir-header">
+                                            <h4>🔗 FHIR R4 Coverage Resource</h4>
+                                            <button class="btn-toggle-fhir" @onclick="() => showFhirMapping = false">
+                                                Hide FHIR JSON
+                                            </button>
+                                        </div>
+                                        <pre class="fhir-code"><code>{
+  "resourceType": "Coverage",
+  "id": "@plan.PlanId",
+  "status": "active",
+  "type": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+      "code": "@plan.PlanType",
+      "display": "@plan.PlanType Health Plan"
+    }]
+  },
+  "beneficiary": {
+    "reference": "Patient/[patientId]"
+  },
+  "period": {
+    "start": "@($"{plan.EffectiveDate:yyyy-MM-dd}")",
+    "end": "@($"{plan.TerminationDate:yyyy-MM-dd}")"
+  },
+  "payor": [{
+    "display": "Northridge Health System"
+  }],
+  "class": [{
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code": "plan"
+      }]
+    },
+    "value": "@plan.PlanId",
+    "name": "@plan.PlanName"
+  }],
+  "costToBeneficiary": [{
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-copay-type",
+        "code": "deductible"
+      }]
+    },
+    "valueMoney": {
+      "value": @plan.Deductible,
+      "currency": "USD"
+    }
+  }, {
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-copay-type",
+        "code": "coinsurance"
+      }]
+    },
+    "value": @plan.CoinsuranceRate
+  }]
+}</code></pre>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Add Plan Modal -->
+    @if (showAddPlanModal)
+    {
+        <div class="modal-overlay" @onclick="CloseAddPlanModal">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h3>➕ Add New Benefit Plan</h3>
+                    <button class="btn-close" @onclick="CloseAddPlanModal">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Plan ID *</label>
+                        <input type="text" class="form-control" @bind="newPlan.PlanId" placeholder="e.g., HMO-003" />
+                    </div>
+                    <div class="form-group">
+                        <label>Plan Name *</label>
+                        <input type="text" class="form-control" @bind="newPlan.PlanName" placeholder="e.g., Gold HMO Plus" />
+                    </div>
+                    <div class="form-group">
+                        <label>Plan Type *</label>
+                        <select class="form-control" @bind="newPlan.PlanType">
+                            <option value="">Select Type</option>
+                            <option value="HMO">HMO</option>
+                            <option value="PPO">PPO</option>
+                            <option value="EPO">EPO</option>
+                            <option value="POS">POS</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Deductible *</label>
+                            <input type="number" class="form-control" @bind="newPlan.Deductible" step="100" />
+                        </div>
+                        <div class="form-group">
+                            <label>Out of Pocket Max *</label>
+                            <input type="number" class="form-control" @bind="newPlan.OutOfPocketMax" step="100" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Coinsurance (%)</label>
+                            <input type="number" class="form-control" @bind="newPlan.Coinsurance" min="0" max="100" />
+                        </div>
+                        <div class="form-group">
+                            <label>Primary Care Copay</label>
+                            <input type="number" class="form-control" @bind="newPlan.PrimaryCopay" step="5" />
+                        </div>
+                        <div class="form-group">
+                            <label>Specialist Copay</label>
+                            <input type="number" class="form-control" @bind="newPlan.SpecialistCopay" step="5" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date *</label>
+                            <input type="date" class="form-control" @bind="newPlan.StartDate" />
+                        </div>
+                        <div class="form-group">
+                            <label>End Date *</label>
+                            <input type="date" class="form-control" @bind="newPlan.EndDate" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" @bind="newPlan.RequiresPriorAuth" />
+                            Requires Prior Authorization
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" @onclick="CloseAddPlanModal">Cancel</button>
+                    <button class="btn-primary" @onclick="CreateNewPlan">💾 Create Plan</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<BenefitPlan> plans = new();
+    private BenefitPlan? selectedPlan;
+    private BenefitPlan? editingPlan;
+    private BenefitPlan newPlan = new();
+    private bool isLoading = true;
+    private bool isEditing = false;
+    private bool showFhirMapping = false;
+    private bool showAddPlanModal = false;
+    private string nlQuery = string.Empty;
+    private BenefitConfigResponse? nlResponse;
+    private string statusMessage = string.Empty;
+    private bool isError = false;
+
+    // Pagination and filtering
+    private string searchTerm = string.Empty;
+    private string filterPlanType = string.Empty;
+    private string filterStatus = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 20;
+
+    private List<BenefitPlan> FilteredPlans => plans
+        .Where(p => (string.IsNullOrEmpty(searchTerm) || 
+                    p.PlanName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    p.PlanId.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                   (string.IsNullOrEmpty(filterPlanType) || p.PlanType == filterPlanType))
+        .ToList();
+
+    private int TotalPages => (int)Math.Ceiling((double)FilteredPlans.Count / pageSize);
+
+    private IEnumerable<(BenefitPlan plan, int index)> GetPagedPlans()
+    {
+        return FilteredPlans
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .Select((plan, index) => (plan, index));
+    }
+
+    private void EditInline(BenefitPlan plan)
+    {
+        editingPlan = new BenefitPlan
+        {
+            PlanId = plan.PlanId,
+            PlanName = plan.PlanName,
+            PlanType = plan.PlanType,
+            Deductible = plan.Deductible,
+            OutOfPocketMax = plan.OutOfPocketMax,
+            CoinsuranceRate = plan.CoinsuranceRate,
+            Copay = plan.Copay,
+            EffectiveDate = plan.EffectiveDate,
+            TerminationDate = plan.TerminationDate,
+            RequiresPriorAuth = plan.RequiresPriorAuth,
+            CoveredServices = plan.CoveredServices,
+            InNetworkProviders = plan.InNetworkProviders
+        };
+    }
+
+    private async Task SaveInlineEdit(BenefitPlan originalPlan)
+    {
+        if (editingPlan == null) return;
+
+        try
+        {
+            // Update original plan with edited values
+            originalPlan.PlanName = editingPlan.PlanName;
+            originalPlan.PlanType = editingPlan.PlanType;
+            originalPlan.Deductible = editingPlan.Deductible;
+            originalPlan.OutOfPocketMax = editingPlan.OutOfPocketMax;
+            originalPlan.CoinsuranceRate = editingPlan.CoinsuranceRate;
+            originalPlan.Copay = editingPlan.Copay;
+
+            var result = await PlanService.SavePlanAsync(originalPlan);
+            
+            if (result.Success)
+            {
+                ShowSuccess("Plan updated successfully!");
+                editingPlan = null;
+            }
+            else
+            {
+                ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to save: {ex.Message}");
+        }
+    }
+
+    private void CancelInlineEdit()
+    {
+        editingPlan = null;
+    }
+
+    private async Task DeletePlan(BenefitPlan plan)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Delete plan '{plan.PlanName}'?"))
+        {
+            try
+            {
+                var result = await PlanService.DeletePlanAsync(plan.PlanId);
+                if (result.Success)
+                {
+                    ShowSuccess("Plan deleted successfully!");
+                    await LoadPlans();
+                }
+                else
+                {
+                    ShowError(result.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to delete: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ExportPlans()
+    {
+        await JSRuntime.InvokeVoidAsync("alert", $"Exporting {FilteredPlans.Count} plans to Excel...");
+    }
+
+    private string GetPlanTypeColor(string planType) => planType switch
+    {
+        "HMO" => "primary",
+        "PPO" => "success",
+        "EPO" => "info",
+        "POS" => "warning",
+        _ => "secondary"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlans();
+    }
+
+    private async Task LoadPlans()
+    {
+        isLoading = true;
+        try
+        {
+            plans = await PlanService.GetPlansAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to load plans: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectPlan(BenefitPlan plan)
+    {
+        if (selectedPlan?.PlanId == plan.PlanId)
+        {
+            selectedPlan = null;
+            isEditing = false;
+            showFhirMapping = false;
+        }
+        else
+        {
+            selectedPlan = plan;
+            isEditing = false;
+            showFhirMapping = false;
+        }
+    }
+
+    private void EditPlan(BenefitPlan plan)
+    {
+        selectedPlan = plan;
+        isEditing = true;
+    }
+
+    private async Task SavePlan()
+    {
+        if (selectedPlan == null) return;
+
+        try
+        {
+            var result = await PlanService.SavePlanAsync(selectedPlan);
+            
+            if (result.Success)
+            {
+                ShowSuccess(result.Message);
+                isEditing = false;
+                await LoadPlans(); // Refresh plans
+            }
+            else
+            {
+                ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to save plan: {ex.Message}");
+        }
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        // Reload to discard changes
+        _ = LoadPlans();
+    }
+
+    private void ShowAddPlanModal()
+    {
+        newPlan = new BenefitPlan
+        {
+            StartDate = DateTime.Now,
+            EndDate = DateTime.Now.AddYears(1),
+            Coinsurance = 20,
+            PrimaryCopay = 25,
+            SpecialistCopay = 50,
+            Deductible = 1000,
+            OutOfPocketMax = 5000,
+            InNetworkProviders = new List<NetworkProvider>()
+        };
+        showAddPlanModal = true;
+    }
+
+    private void CloseAddPlanModal()
+    {
+        showAddPlanModal = false;
+        newPlan = new();
+    }
+
+    private async Task CreateNewPlan()
+    {
+        try
+        {
+            var result = await PlanService.SavePlanAsync(newPlan);
+            
+            if (result.Success)
+            {
+                ShowSuccess(result.Message);
+                CloseAddPlanModal();
+                await LoadPlans(); // Refresh plans
+            }
+            else
+            {
+                ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to create plan: {ex.Message}");
+        }
+    }
+
+    private async Task ExportToCMS()
+    {
+        try
+        {
+            var cmsData = await PlanService.ExportToCMSAsync(plans);
+            
+            // Download file using JavaScript interop
+            var fileName = $"CMS_PBP_Export_{DateTime.Now:yyyyMMdd_HHmmss}.json";
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, cmsData);
+            
+            ShowSuccess($"CMS export completed: {fileName}");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Export failed: {ex.Message}");
+        }
+    }
+
+    private async Task ConfigureWithAI()
+    {
+        if (string.IsNullOrWhiteSpace(nlQuery)) return;
+        
+        try
+        {
+            nlResponse = await NlService.GetBenefitConfigAsync(nlQuery);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"AI configuration failed: {ex.Message}");
+        }
+    }
+
+    private void ApplyAIConfiguration()
+    {
+        if (nlResponse == null) return;
+
+        // Apply the AI-generated configuration to the selected or new plan
+        var targetPlan = selectedPlan ?? newPlan;
+        
+        // Parse configuration and apply
+        var config = nlResponse.ConfigurationSuggestion;
+        
+        // Extract and apply copay
+        var copayMatch = System.Text.RegularExpressions.Regex.Match(config, @"Copayment: \$(\d+)");
+        if (copayMatch.Success && int.TryParse(copayMatch.Groups[1].Value, out var copay))
+        {
+            targetPlan.PrimaryCopay = copay;
+        }
+
+        // Extract and apply coinsurance
+        var coinsMatch = System.Text.RegularExpressions.Regex.Match(config, @"Coinsurance: (\d+)%");
+        if (coinsMatch.Success && int.TryParse(coinsMatch.Groups[1].Value, out var coins))
+        {
+            targetPlan.Coinsurance = coins;
+        }
+
+        // Extract and apply deductible
+        var dedMatch = System.Text.RegularExpressions.Regex.Match(config, @"Deductible: \$(\d+)");
+        if (dedMatch.Success && int.TryParse(dedMatch.Groups[1].Value, out var ded))
+        {
+            targetPlan.Deductible = ded;
+        }
+
+        // Apply prior auth if mentioned
+        if (config.Contains("Prior Authorization: Required", StringComparison.OrdinalIgnoreCase))
+        {
+            targetPlan.RequiresPriorAuth = true;
+        }
+
+        ShowSuccess("AI configuration applied successfully!");
+        nlResponse = null;
+        nlQuery = string.Empty;
+    }
+
+    private void ShowSuccess(string message)
+    {
+        statusMessage = message;
+        isError = false;
+        ClearMessageAfterDelay();
+    }
+
+    private void ShowError(string message)
+    {
+        statusMessage = message;
+        isError = true;
+        ClearMessageAfterDelay();
+    }
+
+    private async void ClearMessageAfterDelay()
+    {
+        await Task.Delay(5000);
+        statusMessage = string.Empty;
+        StateHasChanged();
+    }
+}
+            await GetNlAssistance();
+        }
+    }
+}

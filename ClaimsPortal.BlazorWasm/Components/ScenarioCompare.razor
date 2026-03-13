@@ -1,0 +1,329 @@
+@using ClaimsPortal.BlazorWasm.Models
+
+<style>
+    .compare-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .scenario-selector {
+        margin-bottom: 2rem;
+    }
+
+    .scenario-selector label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .scenario-selector select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+
+    .comparison-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
+    .comparison-metrics {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 2rem;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .metric-box {
+        text-align: center;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .delta-arrow {
+        font-size: 3rem;
+        color: var(--primary-color);
+    }
+
+    .waterfall-section {
+        margin-bottom: 2rem;
+    }
+
+    .waterfall-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .waterfall-chart {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .waterfall-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .waterfall-label {
+        width: 150px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .waterfall-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .waterfall-fill {
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .waterfall-positive {
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+    }
+
+    .waterfall-negative {
+        background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+    }
+
+    .service-buckets {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .bucket-card {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 6px;
+        border-left: 4px solid var(--primary-color);
+    }
+
+    .bucket-name {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .bucket-values {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.875rem;
+    }
+
+    .bucket-baseline {
+        color: var(--text-secondary);
+    }
+
+    .bucket-forecast {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+</style>
+
+<div class="compare-container">
+    <h4>Scenario Comparison</h4>
+
+    @if (Scenarios.Any())
+    {
+        <div class="scenario-selector">
+            <label>Select Scenario to Compare</label>
+            <select @bind="selectedScenarioId">
+                <option value="">-- Select a scenario --</option>
+                @foreach (var scenario in Scenarios)
+                {
+                    <option value="@scenario.ScenarioId">@scenario.Name (@($"{scenario.Result?.ForecastPMPM:C}"))</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (Baseline != null && selectedScenario?.Result != null)
+    {
+        <div class="comparison-header">
+            <h3>@selectedScenario.Name</h3>
+            <p>@selectedScenario.Description</p>
+        </div>
+
+        <div class="comparison-metrics">
+            <div class="metric-box">
+                <div class="metric-label">Baseline PMPM</div>
+                <div class="metric-value">@($"{Baseline.TotalPMPM:C}")</div>
+            </div>
+            <div class="delta-arrow">→</div>
+            <div class="metric-box">
+                <div class="metric-label">Forecast PMPM</div>
+                <div class="metric-value">@($"{selectedScenario.Result.ForecastPMPM:C}")</div>
+                <div class="metric-label" style="color: @(selectedScenario.Result.DeltaPct >= 0 ? "var(--error-color)" : "var(--success-color)"); font-weight: 700; margin-top: 0.5rem;">
+                    @(selectedScenario.Result.DeltaPct >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaPMPM:C}") (@($"{selectedScenario.Result.DeltaPct:N2}")%)
+                </div>
+            </div>
+        </div>
+
+        <div class="waterfall-section">
+            <div class="waterfall-title">PMPM Delta Drivers (Waterfall)</div>
+            <div class="waterfall-chart">
+                @if (selectedScenario.Result.DeltaDrivers.ProviderTrendDelta != 0)
+                {
+                    <div class="waterfall-bar">
+                        <div class="waterfall-label">Provider Trend</div>
+                        <div class="waterfall-container">
+                            <div class="waterfall-fill @(selectedScenario.Result.DeltaDrivers.ProviderTrendDelta >= 0 ? "waterfall-positive" : "waterfall-negative")"
+                                 style="width: @GetWaterfallWidth(selectedScenario.Result.DeltaDrivers.ProviderTrendDelta, selectedScenario.Result.DeltaPMPM)%">
+                                @(selectedScenario.Result.DeltaDrivers.ProviderTrendDelta >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaDrivers.ProviderTrendDelta:C}")
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (selectedScenario.Result.DeltaDrivers.PharmacyTrendDelta != 0)
+                {
+                    <div class="waterfall-bar">
+                        <div class="waterfall-label">Pharmacy Trend</div>
+                        <div class="waterfall-container">
+                            <div class="waterfall-fill @(selectedScenario.Result.DeltaDrivers.PharmacyTrendDelta >= 0 ? "waterfall-positive" : "waterfall-negative")"
+                                 style="width: @GetWaterfallWidth(selectedScenario.Result.DeltaDrivers.PharmacyTrendDelta, selectedScenario.Result.DeltaPMPM)%">
+                                @(selectedScenario.Result.DeltaDrivers.PharmacyTrendDelta >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaDrivers.PharmacyTrendDelta:C}")
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (selectedScenario.Result.DeltaDrivers.RiskDelta != 0)
+                {
+                    <div class="waterfall-bar">
+                        <div class="waterfall-label">Risk Change</div>
+                        <div class="waterfall-container">
+                            <div class="waterfall-fill @(selectedScenario.Result.DeltaDrivers.RiskDelta >= 0 ? "waterfall-positive" : "waterfall-negative")"
+                                 style="width: @GetWaterfallWidth(selectedScenario.Result.DeltaDrivers.RiskDelta, selectedScenario.Result.DeltaPMPM)%">
+                                @(selectedScenario.Result.DeltaDrivers.RiskDelta >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaDrivers.RiskDelta:C}")
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (selectedScenario.Result.DeltaDrivers.UtilizationDelta != 0)
+                {
+                    <div class="waterfall-bar">
+                        <div class="waterfall-label">Utilization Change</div>
+                        <div class="waterfall-container">
+                            <div class="waterfall-fill @(selectedScenario.Result.DeltaDrivers.UtilizationDelta >= 0 ? "waterfall-positive" : "waterfall-negative")"
+                                 style="width: @GetWaterfallWidth(selectedScenario.Result.DeltaDrivers.UtilizationDelta, selectedScenario.Result.DeltaPMPM)%">
+                                @(selectedScenario.Result.DeltaDrivers.UtilizationDelta >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaDrivers.UtilizationDelta:C}")
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (selectedScenario.Result.DeltaDrivers.MembershipDelta != 0)
+                {
+                    <div class="waterfall-bar">
+                        <div class="waterfall-label">Membership Impact</div>
+                        <div class="waterfall-container">
+                            <div class="waterfall-fill @(selectedScenario.Result.DeltaDrivers.MembershipDelta >= 0 ? "waterfall-positive" : "waterfall-negative")"
+                                 style="width: @GetWaterfallWidth(selectedScenario.Result.DeltaDrivers.MembershipDelta, selectedScenario.Result.DeltaPMPM)%">
+                                @(selectedScenario.Result.DeltaDrivers.MembershipDelta >= 0 ? "+" : "")@($"{selectedScenario.Result.DeltaDrivers.MembershipDelta:C}")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="waterfall-section">
+            <div class="waterfall-title">Service Bucket Comparison</div>
+            <div class="service-buckets">
+                <div class="bucket-card">
+                    <div class="bucket-name">Inpatient</div>
+                    <div class="bucket-values">
+                        <span class="bucket-baseline">Baseline: @($"{Baseline.ServiceBuckets.InpatientPMPM:C}")</span>
+                        <span class="bucket-forecast">Forecast: @($"{selectedScenario.Result.ForecastServiceBuckets.InpatientPMPM:C}")</span>
+                    </div>
+                </div>
+                <div class="bucket-card">
+                    <div class="bucket-name">Outpatient</div>
+                    <div class="bucket-values">
+                        <span class="bucket-baseline">Baseline: @($"{Baseline.ServiceBuckets.OutpatientPMPM:C}")</span>
+                        <span class="bucket-forecast">Forecast: @($"{selectedScenario.Result.ForecastServiceBuckets.OutpatientPMPM:C}")</span>
+                    </div>
+                </div>
+                <div class="bucket-card">
+                    <div class="bucket-name">Professional</div>
+                    <div class="bucket-values">
+                        <span class="bucket-baseline">Baseline: @($"{Baseline.ServiceBuckets.ProfessionalPMPM:C}")</span>
+                        <span class="bucket-forecast">Forecast: @($"{selectedScenario.Result.ForecastServiceBuckets.ProfessionalPMPM:C}")</span>
+                    </div>
+                </div>
+                <div class="bucket-card">
+                    <div class="bucket-name">Pharmacy</div>
+                    <div class="bucket-values">
+                        <span class="bucket-baseline">Baseline: @($"{Baseline.ServiceBuckets.PharmacyPMPM:C}")</span>
+                        <span class="bucket-forecast">Forecast: @($"{selectedScenario.Result.ForecastServiceBuckets.PharmacyPMPM:C}")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (!Scenarios.Any())
+    {
+        <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+            No scenarios available. Create a scenario in the Scenario Builder tab to compare.
+        </p>
+    }
+    else
+    {
+        <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+            Select a scenario above to view comparison.
+        </p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public BaselineMetricsModel? Baseline { get; set; }
+
+    [Parameter]
+    public List<ScenarioModel> Scenarios { get; set; } = new();
+
+    private string selectedScenarioId = string.Empty;
+    private ScenarioModel? selectedScenario => Scenarios.FirstOrDefault(s => s.ScenarioId == selectedScenarioId);
+
+    private double GetWaterfallWidth(decimal value, decimal totalDelta)
+    {
+        if (totalDelta == 0) return 0;
+        var pct = Math.Abs((double)(value / totalDelta * 100));
+        return Math.Min(pct, 100);
+    }
+}

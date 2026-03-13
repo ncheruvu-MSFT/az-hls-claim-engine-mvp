@@ -1,0 +1,77 @@
+{
+  "resourceType": "MedicationRequest",
+  "id": "med-metformin",
+  "status": "active",
+  "intent": "order",
+  "medication": {
+    "concept": {
+      "coding": [
+        {
+          "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+          "code": "860975",
+          "display": "Metformin 500mg Tablet"
+        }
+      ],
+      "text": "Metformin 500mg Tablet"
+    }
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1",
+    "display": "John Smith"
+  },
+  "authoredOn": "2025-10-01",
+  "requester": {
+    "reference": "Practitioner/dr-johnson",
+    "display": "Dr. Sarah Johnson"
+  },
+  "dosageInstruction": [
+    {
+      "text": "Take 1 tablet by mouth twice daily with meals",
+      "timing": {
+        "repeat": {
+          "frequency": 2,
+          "period": 1,
+          "periodUnit": "d"
+        }
+      },
+      "route": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "26643006",
+            "display": "Oral route"
+          }
+        ]
+      },
+      "doseAndRate": [
+        {
+          "doseQuantity": {
+            "value": 500,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg"
+          }
+        }
+      ],
+      "patientInstruction": "Take with breakfast and dinner to reduce stomach upset"
+    }
+  ],
+  "dispenseRequest": {
+    "numberOfRepeatsAllowed": 3,
+    "quantity": {
+      "value": 60,
+      "unit": "tablets",
+      "system": "http://unitsofmeasure.org",
+      "code": "{tablet}"
+    },
+    "expectedSupplyDuration": {
+      "value": 30,
+      "unit": "days",
+      "system": "http://unitsofmeasure.org",
+      "code": "d"
+    },
+    "validityPeriod": {
+      "start": "2026-01-01"
+    }
+  }
+}

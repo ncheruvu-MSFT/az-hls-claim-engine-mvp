@@ -1,0 +1,795 @@
+@page "/hedis-dashboard"
+@using ClaimsPortal.BlazorWasm.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>HEDIS Quality Dashboard - ClaimsIQ Platform</PageTitle>
+
+<div class="page-header">
+    <h3>📊 HEDIS Quality Dashboard</h3>
+    <p class="subtitle">NCQA Healthcare Effectiveness Data and Information Set - Real-time Quality Performance</p>
+</div>
+
+@if (isLoading)
+{
+    <div class="card">
+        <div style="text-align: center; padding: 3rem;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="margin-top: 1rem;">Calculating HEDIS measures...</p>
+        </div>
+    </div>
+}
+else if (dashboard != null)
+{
+    <!-- Star Rating & Summary Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-label">CMS Star Rating</div>
+            <div class="stat-value">@dashboard.OverallStarRating.ToString("F1")</div>
+            <small style="color: #107c10;">↑ Projected: @dashboard.ProjectedStarRating.ToString("F1")</small>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-label">Total Members</div>
+            <div class="stat-value">@dashboard.TotalMembers.ToString("N0")</div>
+            <small>@dashboard.PlanSegment</small>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-label">Measures Tracked</div>
+            <div class="stat-value">@dashboard.Measures.Count</div>
+            <small>Year @dashboard.MeasurementYear</small>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-label">Care Gaps</div>
+            <div class="stat-value" style="color: #ff8c00;">@dashboard.TotalGaps.ToString("N0")</div>
+            <small>@(Math.Round((double)dashboard.TotalGaps / dashboard.TotalMembers * 100, 1))% of members</small>
+        </div>
+    </div>
+
+    <!-- Priority Actions -->
+    @if (dashboard.PriorityActions.Any())
+    {
+        <div class="card">
+            <div class="card-header">
+                <h4>🎯 Priority Gap Closure Actions</h4>
+                <p>Top opportunities for Star Rating improvement</p>
+            </div>
+            <div class="card-body">
+                <div class="priority-actions-grid">
+                    @foreach (var action in dashboard.PriorityActions)
+                    {
+                        <div class="priority-action-card">
+                            <div class="action-header">
+                                <h5>@action.MeasureId - @action.MeasureName</h5>
+                                <span class="star-impact" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    +@action.StarRatingImpact.ToString("F2") ⭐
+                                </span>
+                            </div>
+                            <div class="action-stats">
+                                <div class="action-stat">
+                                    <span class="label">Gaps:</span>
+                                    <span class="value">@action.GapCount.ToString("N0")</span>
+                                </div>
+                                <div class="action-stat">
+                                    <span class="label">Current:</span>
+                                    <span class="value">@action.CurrentRate.ToString("F1")%</span>
+                                </div>
+                                <div class="action-stat">
+                                    <span class="label">Target:</span>
+                                    <span class="value" style="color: #107c10;">@action.TargetRate.ToString("F1")%</span>
+                                </div>
+                            </div>
+                            <div class="action-approach">
+                                <strong>Recommended Approach:</strong> @action.RecommendedApproach
+                            </div>
+                            <button class="btn btn-primary btn-sm" @onclick="() => ViewGaps(action.MeasureId)">
+                                View Gap List →
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Measures Grid -->
+    <div class="card">
+        <div class="card-header">
+            <h4>📊 HEDIS Measure Performance</h4>
+            <div class="filter-controls">
+                <select class="form-control" @onchange="HandleCategoryFilter" style="width: auto;">
+                    <option value="All">All Categories</option>
+                    <option value="Effectiveness of Care">Effectiveness of Care</option>
+                    <option value="Prevention & Screening">Prevention & Screening</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="measures-grid">
+                @foreach (var measure in GetFilteredMeasures())
+                {
+                    <div class="measure-card">
+                        <div class="measure-header">
+                            <div>
+                                <h5>@measure.MeasureId</h5>
+                                <p class="measure-name">@measure.MeasureName</p>
+                                <span class="category-badge">@measure.MeasureCategory</span>
+                            </div>
+                            <div class="measure-rate-circle" style="background: @GetRateColor(measure.Rate);">
+                                <span class="rate-value">@measure.Rate.ToString("F1")%</span>
+                            </div>
+                        </div>
+
+                        <div class="measure-stats-row">
+                            <div class="stat-item">
+                                <div class="stat-label">Numerator</div>
+                                <div class="stat-value">@measure.Numerator.ToString("N0")</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Denominator</div>
+                                <div class="stat-value">@measure.Denominator.ToString("N0")</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Gaps</div>
+                                <div class="stat-value" style="color: #ff8c00;">@measure.GapCount.ToString("N0")</div>
+                            </div>
+                        </div>
+
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: @measure.Rate%; background: @GetRateColor(measure.Rate);"></div>
+                        </div>
+
+                        <div class="measure-actions">
+                            <button class="btn btn-secondary btn-sm" @onclick="() => ViewMeasureDetails(measure.MeasureId)">
+                                Details
+                            </button>
+                            <button class="btn btn-primary btn-sm" @onclick="() => ViewGaps(measure.MeasureId)">
+                                View Gaps (@measure.GapCount)
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Gap Closure Modal -->
+    @if (selectedMeasureId != null)
+    {
+        <div class="modal-overlay" @onclick="CloseGapModal">
+            <div class="modal-content" @onclick:stopPropagation="true">
+                <div class="modal-header">
+                    <h4>Care Gaps - @selectedMeasureId</h4>
+                    <button class="btn-close" @onclick="CloseGapModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    @if (gapPatients != null)
+                    {
+                        <div class="gap-summary">
+                            <p><strong>Total Gaps:</strong> @gapPatients.Count</p>
+                            <p><strong>Outreach Recommendation:</strong> @outreachRecommendation</p>
+                        </div>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Age</th>
+                                    <th>Priority</th>
+                                    <th>Risk</th>
+                                    <th>Last Service</th>
+                                    <th>Recommended Action</th>
+                                    <th>PCP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var patient in gapPatients.Take(50))
+                                {
+                                    <tr>
+                                        <td>@patient.PatientName</td>
+                                        <td>@patient.Age</td>
+                                        <td>
+                                            <span class="priority-badge priority-@patient.Priority">
+                                                @GetPriorityLabel(patient.Priority)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="risk-badge risk-@patient.RiskLevel.ToLower()">
+                                                @patient.RiskLevel
+                                            </span>
+                                        </td>
+                                        <td>@(patient.LastServiceDate ?? "Never")</td>
+                                        <td><small>@patient.RecommendedAction</small></td>
+                                        <td><small>@patient.PrimaryCareProvider</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div style="text-align: center; padding: 2rem;">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p>Loading gap patients...</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private HedisDashboardResponse? dashboard;
+    private List<GapPatient>? gapPatients;
+    private string? selectedMeasureId;
+    private string? outreachRecommendation;
+    private string selectedCategory = "All";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboard();
+    }
+
+    private async Task LoadDashboard()
+    {
+        isLoading = true;
+        try
+        {
+            // Call backend API (use mock for now with USE_MOCK_SERVICES=true)
+            var apiUrl = "http://localhost:7071/api/hedis/dashboard?planSegment=All Plans&year=2025";
+            dashboard = await Http.GetFromJsonAsync<HedisDashboardResponse>(apiUrl);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+            // Fallback to mock data
+            dashboard = GetMockDashboard();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ViewGaps(string measureId)
+    {
+        selectedMeasureId = measureId;
+        gapPatients = null;
+
+        try
+        {
+            var apiUrl = $"http://localhost:7071/api/hedis/gaps/{measureId}?planSegment=All Plans&year=2025&top=100";
+            var response = await Http.GetFromJsonAsync<GapsResponse>(apiUrl);
+            gapPatients = response?.Gaps ?? new List<GapPatient>();
+            outreachRecommendation = response?.OutreachRecommendation;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading gaps: {ex.Message}");
+            gapPatients = new List<GapPatient>();
+        }
+    }
+
+    private void CloseGapModal()
+    {
+        selectedMeasureId = null;
+        gapPatients = null;
+    }
+
+    private void ViewMeasureDetails(string measureId)
+    {
+        Navigation.NavigateTo($"/hedis-measure/{measureId}");
+    }
+
+    private void HandleCategoryFilter(ChangeEventArgs e)
+    {
+        selectedCategory = e.Value?.ToString() ?? "All";
+    }
+
+    private IEnumerable<MeasureResult> GetFilteredMeasures()
+    {
+        if (dashboard == null) return Enumerable.Empty<MeasureResult>();
+
+        return selectedCategory == "All" 
+            ? dashboard.Measures 
+            : dashboard.Measures.Where(m => m.MeasureCategory == selectedCategory);
+    }
+
+    private string GetRateColor(double rate)
+    {
+        return rate >= 80 ? "#107c10" : rate >= 60 ? "#ff8c00" : "#d13438";
+    }
+
+    private string GetPriorityLabel(int priority)
+    {
+        return priority switch
+        {
+            5 => "Critical",
+            4 => "High",
+            3 => "Medium",
+            2 => "Low",
+            _ => "Standard"
+        };
+    }
+
+    private HedisDashboardResponse GetMockDashboard()
+    {
+        return new HedisDashboardResponse
+        {
+            MeasurementYear = 2025,
+            PlanSegment = "All Plans",
+            OverallStarRating = 4.0,
+            ProjectedStarRating = 4.5,
+            TotalMembers = 50000,
+            TotalGaps = 6050,
+            LastUpdated = DateTime.UtcNow,
+            Measures = new List<MeasureResult>
+            {
+                new() { MeasureId = "BCS", MeasureName = "Breast Cancer Screening", MeasureCategory = "Prevention & Screening", Denominator = 3750, Numerator = 2550, Rate = 68.0, GapCount = 1200 },
+                new() { MeasureId = "COL", MeasureName = "Colorectal Cancer Screening", MeasureCategory = "Prevention & Screening", Denominator = 4200, Numerator = 3024, Rate = 72.0, GapCount = 1176 },
+                new() { MeasureId = "CBP", MeasureName = "Controlling High Blood Pressure", MeasureCategory = "Effectiveness of Care", Denominator = 6500, Numerator = 5525, Rate = 85.0, GapCount = 975 },
+                new() { MeasureId = "HBD", MeasureName = "HbA1c Control for Diabetes", MeasureCategory = "Effectiveness of Care", Denominator = 5500, Numerator = 3410, Rate = 62.0, GapCount = 2090 }
+            },
+            PriorityActions = new List<PriorityAction>
+            {
+                new() { MeasureId = "HBD", MeasureName = "HbA1c Control for Diabetes", GapCount = 2090, CurrentRate = 62.0, TargetRate = 77.0, StarRatingImpact = 0.45, RecommendedApproach = "Targeted outreach: Care manager calls + provider alerts" }
+            }
+        };
+    }
+
+    // Response models
+    public class HedisDashboardResponse
+    {
+        public int MeasurementYear { get; set; }
+        public string PlanSegment { get; set; } = "";
+        public double OverallStarRating { get; set; }
+        public double ProjectedStarRating { get; set; }
+        public int TotalMembers { get; set; }
+        public int TotalGaps { get; set; }
+        public DateTime LastUpdated { get; set; }
+        public List<MeasureResult> Measures { get; set; } = new();
+        public List<PriorityAction> PriorityActions { get; set; } = new();
+    }
+
+    public class MeasureResult
+    {
+        public string MeasureId { get; set; } = "";
+        public string MeasureName { get; set; } = "";
+        public string MeasureCategory { get; set; } = "";
+        public int Denominator { get; set; }
+        public int Numerator { get; set; }
+        public double Rate { get; set; }
+        public int GapCount { get; set; }
+    }
+
+    public class PriorityAction
+    {
+        public string MeasureId { get; set; } = "";
+        public string MeasureName { get; set; } = "";
+        public int GapCount { get; set; }
+        public double CurrentRate { get; set; }
+        public double TargetRate { get; set; }
+        public double StarRatingImpact { get; set; }
+        public string RecommendedApproach { get; set; } = "";
+    }
+
+    public class GapsResponse
+    {
+        public List<GapPatient> Gaps { get; set; } = new();
+        public string? OutreachRecommendation { get; set; }
+    }
+
+    public class GapPatient
+    {
+        public string PatientName { get; set; } = "";
+        public int Age { get; set; }
+        public int Priority { get; set; }
+        public string RiskLevel { get; set; } = "";
+        public string? LastServiceDate { get; set; }
+        public string RecommendedAction { get; set; } = "";
+        public string PrimaryCareProvider { get; set; } = "";
+    }
+}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 2rem;
+        opacity: 0.1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #605e5c;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0078d4;
+        margin-bottom: 0.25rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h4 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .priority-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .priority-action-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        border-left: 4px solid #667eea;
+    }
+
+    .action-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .action-header h5 {
+        margin: 0;
+        font-size: 1rem;
+        flex: 1;
+    }
+
+    .star-impact {
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .action-stats {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .action-stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .action-stat .label {
+        font-size: 0.75rem;
+        color: #605e5c;
+        text-transform: uppercase;
+    }
+
+    .action-stat .value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #323130;
+    }
+
+    .action-approach {
+        background: white;
+        padding: 0.75rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .measures-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .measure-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .measure-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .measure-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .measure-header h5 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0078d4;
+    }
+
+    .measure-name {
+        font-size: 0.875rem;
+        color: #323130;
+        margin: 0.25rem 0;
+    }
+
+    .category-badge {
+        display: inline-block;
+        background: #f3f2f1;
+        color: #605e5c;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .measure-rate-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .rate-value {
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+    }
+
+    .measure-stats-row {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-item {
+        flex: 1;
+    }
+
+    .stat-item .stat-label {
+        font-size: 0.75rem;
+        color: #605e5c;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-item .stat-value {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #323130;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .measure-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background: #0078d4;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #106ebe;
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #605e5c;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .data-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .data-table th {
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .data-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 0.875rem;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .priority-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .priority-5 { background: #d13438; color: white; }
+    .priority-4 { background: #ff8c00; color: white; }
+    .priority-3 { background: #0078d4; color: white; }
+    .priority-2 { background: #107c10; color: white; }
+
+    .risk-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .risk-high { background: #fde7e9; color: #d13438; }
+    .risk-medium { background: #fff4ce; color: #ff8c00; }
+    .risk-low { background: #dff6dd; color: #107c10; }
+
+    .gap-summary {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+</style>

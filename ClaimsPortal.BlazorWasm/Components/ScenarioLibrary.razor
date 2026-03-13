@@ -1,0 +1,215 @@
+@using ClaimsPortal.BlazorWasm.Models
+
+<style>
+    .library-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .library-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .scenarios-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+
+    .scenarios-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .scenarios-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .scenarios-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .scenarios-table tbody tr:hover {
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .scenario-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .scenario-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .delta-positive {
+        color: var(--error-color);
+        font-weight: 600;
+    }
+
+    .delta-negative {
+        color: var(--success-color);
+        font-weight: 600;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
+        padding: 0.5rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1.25rem;
+        transition: transform 0.2s ease;
+    }
+
+    .btn-icon:hover {
+        transform: scale(1.2);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="library-container">
+    <div class="library-header">
+        <h4>Scenario Library</h4>
+    </div>
+
+    @if (Scenarios.Any())
+    {
+        <table class="scenarios-table">
+            <thead>
+                <tr>
+                    <th>Scenario Name</th>
+                    <th>Created</th>
+                    <th>Owner</th>
+                    <th>Forecast PMPM</th>
+                    <th>Delta</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var scenario in Scenarios.OrderByDescending(s => s.CreatedAt))
+                {
+                    <tr @onclick="() => OnScenarioSelected.InvokeAsync(scenario)">
+                        <td>
+                            <div class="scenario-name">@scenario.Name</div>
+                            @if (!string.IsNullOrEmpty(scenario.Description))
+                            {
+                                <div class="scenario-description">@scenario.Description</div>
+                            }
+                        </td>
+                        <td>@scenario.CreatedAt.ToString("MMM dd, yyyy")</td>
+                        <td>@scenario.Owner.Split('@')[0]</td>
+                        <td>@($"{scenario.Result?.ForecastPMPM:C}")</td>
+                        <td>
+                            @if (scenario.Result != null)
+                            {
+                                <span class="@(scenario.Result.DeltaPct >= 0 ? "delta-positive" : "delta-negative")">
+                                    @(scenario.Result.DeltaPct >= 0 ? "+" : "")@($"{scenario.Result.DeltaPct:N2}")%
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <span class="status-badge @(scenario.Status == "completed" ? "status-completed" : "status-failed")">
+                                @scenario.Status.ToUpper()
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" title="View" @onclick="() => ViewScenario(scenario)" @onclick:stopPropagation="true">
+                                    👁️
+                                </button>
+                                <button class="btn-icon" title="Clone" @onclick="() => CloneScenario(scenario)" @onclick:stopPropagation="true">
+                                    📋
+                                </button>
+                                <button class="btn-icon" title="Export" @onclick="() => ExportScenario(scenario)" @onclick:stopPropagation="true">
+                                    💾
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <h4>No Scenarios Yet</h4>
+            <p>Create your first scenario using the Scenario Builder tab to start modeling.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<ScenarioModel> Scenarios { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<ScenarioModel> OnScenarioSelected { get; set; }
+
+    private void ViewScenario(ScenarioModel scenario)
+    {
+        OnScenarioSelected.InvokeAsync(scenario);
+    }
+
+    private void CloneScenario(ScenarioModel scenario)
+    {
+        Console.WriteLine($"Clone scenario: {scenario.ScenarioId}");
+        // In real implementation, create a copy of the scenario
+    }
+
+    private void ExportScenario(ScenarioModel scenario)
+    {
+        Console.WriteLine($"Export scenario: {scenario.ScenarioId}");
+        // In real implementation, export as JSON file
+    }
+}

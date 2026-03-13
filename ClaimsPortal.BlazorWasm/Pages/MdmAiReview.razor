@@ -1,0 +1,731 @@
+@page "/mdm-ai-review"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>AI-Powered MDM Review - ClaimsIQ Platform</PageTitle>
+
+<div class="page-header">
+    <h3>🤖 AI-Powered Patient Matching Review</h3>
+    <p class="subtitle">Master Data Management with AI Confidence Scoring</p>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Auto-Approved</div>
+        <div class="stat-value" style="color: #107c10;">@autoApprovedCount</div>
+        <small>AI Confidence ≥95%</small>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">🔍</div>
+        <div class="stat-label">Needs Review</div>
+        <div class="stat-value" style="color: #ff8c00;">@needsReviewCount</div>
+        <small>Manual verification required</small>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">AI Accuracy</div>
+        <div class="stat-value">@aiAccuracy.ToString("F1")%</div>
+        <small>Based on historical feedback</small>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-label">Time Saved</div>
+        <div class="stat-value">@timeSavedHours</div>
+        <small>Hours this month</small>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="card">
+    <div class="card-body">
+        <div class="filter-row">
+            <select class="form-control" @bind="confidenceFilter">
+                <option value="All">All Confidence Levels</option>
+                <option value="AutoApprove">Auto-Approve (95-100%)</option>
+                <option value="PriorityReview">Priority Review (80-94%)</option>
+                <option value="StandardReview">Standard Review (50-79%)</option>
+                <option value="AutoReject">Auto-Reject (0-49%)</option>
+            </select>
+
+            <button class="btn btn-primary" @onclick="RefreshMatches">
+                <span>🔄</span> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Match Candidates -->
+@if (isLoading)
+{
+    <div class="card">
+        <div style="text-align: center; padding: 3rem;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p style="margin-top: 1rem;">Loading match candidates...</p>
+        </div>
+    </div>
+}
+else if (matchCandidates.Any())
+{
+    <div class="matches-container">
+        @foreach (var match in GetFilteredMatches())
+        {
+            <div class="match-card @GetConfidenceClass(match.AiConfidence)">
+                <div class="match-header">
+                    <div class="match-info">
+                        <h4>Match Candidate #@match.GoldenResourceId</h4>
+                        @if (match.IsAiAutoApproved)
+                        {
+                            <span class="auto-approved-badge">✅ AI Auto-Approved</span>
+                        }
+                    </div>
+                    
+                    <div class="confidence-section">
+                        <div class="confidence-circle" style="background: @match.AiConfidenceColor;">
+                            <div class="confidence-value">@(match.AiConfidence?.ToString("F0") ?? "N/A")%</div>
+                            <div class="confidence-label">AI Confidence</div>
+                        </div>
+                        <div class="recommendation-badge" style="background: @GetRecommendationColor(match.AiRecommendedDecision);">
+                            @(match.AiRecommendedDecision ?? "Unknown")
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Comparison -->
+                <div class="comparison-grid">
+                    <div class="patient-column">
+                        <h5>👤 Record 1 (Golden)</h5>
+                        <div class="patient-details">
+                            <div class="detail-item">
+                                <span class="label">Name:</span>
+                                <span class="value">@GetResourceField(match.Resource, "name")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">DOB:</span>
+                                <span class="value">@GetResourceField(match.Resource, "birthDate")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">SSN:</span>
+                                <span class="value">@GetResourceField(match.Resource, "identifier")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Address:</span>
+                                <span class="value">@GetResourceField(match.Resource, "address")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Phone:</span>
+                                <span class="value">@GetResourceField(match.Resource, "telecom")</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Gender:</span>
+                                <span class="value">@GetResourceField(match.Resource, "gender")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="match-indicator">
+                        <div class="match-arrow">⇄</div>
+                        <div class="match-score-badge">Match Score: @match.Score.ToString("F1")</div>
+                    </div>
+
+                    <div class="patient-column">
+                        <h5>👤 Record 2 (Candidate)</h5>
+                        <div class="patient-details">
+                            <div class="detail-item">
+                                <span class="label">Name:</span>
+                                <span class="value">@GetCandidateName(match)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">DOB:</span>
+                                <span class="value">@GetCandidateDOB(match)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">SSN:</span>
+                                <span class="value">@GetCandidateSSN(match)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Address:</span>
+                                <span class="value">@GetCandidateAddress(match)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Phone:</span>
+                                <span class="value">@GetCandidatePhone(match)</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Gender:</span>
+                                <span class="value">@GetCandidateGender(match)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Reasoning -->
+                @if (!string.IsNullOrEmpty(match.AiReasoning))
+                {
+                    <div class="ai-reasoning-section">
+                        <h5>🧠 AI Analysis</h5>
+                        <p class="reasoning-text">@match.AiReasoning</p>
+                        
+                        <div class="factors-grid">
+                            @if (match.AiMatchingFactors.Any())
+                            {
+                                <div class="factors-column">
+                                    <h6>✅ Matching Factors</h6>
+                                    <ul class="factors-list matching">
+                                        @foreach (var factor in match.AiMatchingFactors)
+                                        {
+                                            <li>@factor</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                            
+                            @if (match.AiConcerningFactors.Any())
+                            {
+                                <div class="factors-column">
+                                    <h6>⚠️ Concerning Factors</h6>
+                                    <ul class="factors-list concerning">
+                                        @foreach (var factor in match.AiConcerningFactors)
+                                        {
+                                            <li>@factor</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    @if (match.IsAiAutoApproved)
+                    {
+                        <button class="btn btn-success" disabled>
+                            ✅ Auto-Approved by AI
+                        </button>
+                        <button class="btn btn-secondary" @onclick="() => OverrideAI(match, false)">
+                            Override - Reject
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-success" @onclick="() => ApproveMatch(match)">
+                            ✅ Approve Match
+                        </button>
+                        <button class="btn btn-danger" @onclick="() => RejectMatch(match)">
+                            🚫 Reject Match
+                        </button>
+                        <button class="btn btn-secondary" @onclick="() => RequestMoreInfo(match)">
+                            📝 Request More Info
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<MatchCandidateModel> matchCandidates = new();
+    private int autoApprovedCount = 24;
+    private int needsReviewCount = 8;
+    private double aiAccuracy = 94.5;
+    private int timeSavedHours = 117;
+    private string confidenceFilter = "All";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMatchCandidates();
+    }
+
+    private async Task LoadMatchCandidates()
+    {
+        isLoading = true;
+        await Task.Delay(500); // Simulate API call
+
+        // Generate mock data with AI confidence scores
+        matchCandidates = new List<MatchCandidateModel>
+        {
+            new()
+            {
+                GoldenResourceId = "GR-001",
+                FhirResourceId = "PAT-123",
+                Score = 97.5,
+                MatchResult = "MATCH",
+                AiConfidence = 98.5,
+                AiReasoning = "Very high confidence match. Same SSN, DOB, and similar addresses. Name is abbreviated (John M. vs John Michael) which is common.",
+                AiMatchingFactors = new() { "SSN exact match (123-45-6789)", "DOB exact match (1980-01-30)", "Name abbreviation detected (John M.)", "Address match with formatting differences" },
+                AiConcerningFactors = new(),
+                AiRecommendedDecision = "AutoApprove",
+                Resource = new() { ["name"] = "John Michael Smith", ["birthDate"] = "1980-01-30", ["identifier"] = "123-45-6789", ["address"] = "123 Main St, Seattle, WA", ["telecom"] = "206-555-1234", ["gender"] = "Male" }
+            },
+            new()
+            {
+                GoldenResourceId = "GR-002",
+                FhirResourceId = "PAT-456",
+                Score = 88.2,
+                MatchResult = "POSSIBLE_MATCH",
+                AiConfidence = 85.0,
+                AiReasoning = "High confidence match with married name change. Same DOB and SSN, but last name changed from Thompson to Garcia.",
+                AiMatchingFactors = new() { "SSN exact match", "DOB exact match", "First name exact match (Jennifer)", "Address similar (same street, different apt)" },
+                AiConcerningFactors = new() { "Last name change (Thompson → Garcia)", "Phone number mismatch" },
+                AiRecommendedDecision = "PriorityReview",
+                Resource = new() { ["name"] = "Jennifer Thompson", ["birthDate"] = "1985-05-15", ["identifier"] = "234-56-7890", ["address"] = "456 Oak Ave Apt 2A, Seattle, WA", ["telecom"] = "206-555-2345", ["gender"] = "Female" }
+            },
+            new()
+            {
+                GoldenResourceId = "GR-003",
+                FhirResourceId = "PAT-789",
+                Score = 55.0,
+                MatchResult = "POSSIBLE_MATCH",
+                AiConfidence = 52.0,
+                AiReasoning = "Medium confidence - requires manual review. Gender mismatch despite matching SSN, DOB, name and address. Could be data entry error.",
+                AiMatchingFactors = new() { "SSN match", "DOB match", "Name match (Alex Johnson)", "Address match" },
+                AiConcerningFactors = new() { "Gender mismatch (Male vs Female) - possible data entry error" },
+                AiRecommendedDecision = "StandardReview",
+                Resource = new() { ["name"] = "Alex Johnson", ["birthDate"] = "1992-05-15", ["identifier"] = "345-67-8901", ["address"] = "789 Pine St, Seattle, WA", ["telecom"] = "206-555-3456", ["gender"] = "Male" }
+            }
+        };
+
+        isLoading = false;
+    }
+
+    private IEnumerable<MatchCandidateModel> GetFilteredMatches()
+    {
+        return confidenceFilter switch
+        {
+            "AutoApprove" => matchCandidates.Where(m => m.AiConfidence >= 95),
+            "PriorityReview" => matchCandidates.Where(m => m.AiConfidence >= 80 && m.AiConfidence < 95),
+            "StandardReview" => matchCandidates.Where(m => m.AiConfidence >= 50 && m.AiConfidence < 80),
+            "AutoReject" => matchCandidates.Where(m => m.AiConfidence < 50),
+            _ => matchCandidates
+        };
+    }
+
+    private async Task RefreshMatches()
+    {
+        await LoadMatchCandidates();
+    }
+
+    private string GetConfidenceClass(double? confidence)
+    {
+        if (confidence == null) return "";
+        return confidence >= 95 ? "confidence-excellent" :
+               confidence >= 80 ? "confidence-good" :
+               confidence >= 50 ? "confidence-medium" :
+               "confidence-low";
+    }
+
+    private string GetRecommendationColor(string? recommendation)
+    {
+        return recommendation switch
+        {
+            "AutoApprove" => "#107c10",
+            "PriorityReview" => "#0078d4",
+            "StandardReview" => "#ff8c00",
+            "AutoReject" => "#d13438",
+            _ => "#6c757d"
+        };
+    }
+
+    private string GetResourceField(Dictionary<string, object> resource, string field)
+    {
+        return resource.TryGetValue(field, out var value) ? value?.ToString() ?? "N/A" : "N/A";
+    }
+
+    private string GetCandidateName(MatchCandidateModel match) => "John M. Smith"; // Mock data
+    private string GetCandidateDOB(MatchCandidateModel match) => "1980-01-30";
+    private string GetCandidateSSN(MatchCandidateModel match) => "123-45-6789";
+    private string GetCandidateAddress(MatchCandidateModel match) => "123 Main Street, Seattle, WA";
+    private string GetCandidatePhone(MatchCandidateModel match) => "206-555-1234";
+    private string GetCandidateGender(MatchCandidateModel match) => "Male";
+
+    private async Task ApproveMatch(MatchCandidateModel match)
+    {
+        // Send feedback to AI learning endpoint
+        await SendFeedback(match, "Match");
+        matchCandidates.Remove(match);
+        autoApprovedCount++;
+    }
+
+    private async Task RejectMatch(MatchCandidateModel match)
+    {
+        await SendFeedback(match, "NoMatch");
+        matchCandidates.Remove(match);
+    }
+
+    private async Task OverrideAI(MatchCandidateModel match, bool approve)
+    {
+        await SendFeedback(match, approve ? "Match" : "NoMatch", isOverride: true);
+        matchCandidates.Remove(match);
+    }
+
+    private async Task RequestMoreInfo(MatchCandidateModel match)
+    {
+        // Implement more info request logic
+        await Task.CompletedTask;
+    }
+
+    private async Task SendFeedback(MatchCandidateModel match, string decision, bool isOverride = false)
+    {
+        try
+        {
+            var feedback = new
+            {
+                matchId = match.GoldenResourceId,
+                aiConfidence = match.AiConfidence,
+                humanDecision = decision,
+                feedback = isOverride ? $"Human override: {decision}" : $"Human confirmed: {decision}"
+            };
+
+            // Call backend API (commented out for now - use mock)
+            // await Http.PostAsJsonAsync("http://localhost:7071/api/mdm/ai-learn", feedback);
+            await Task.Delay(100); // Simulate API call
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending feedback: {ex.Message}");
+        }
+    }
+}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+
+    .stat-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 2rem;
+        opacity: 0.1;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #605e5c;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .form-control {
+        padding: 0.75rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        flex: 1;
+        max-width: 300px;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background: #0078d4;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #106ebe;
+    }
+
+    .matches-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .match-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        border-left: 4px solid #e0e0e0;
+    }
+
+    .match-card.confidence-excellent {
+        border-left-color: #107c10;
+    }
+
+    .match-card.confidence-good {
+        border-left-color: #0078d4;
+    }
+
+    .match-card.confidence-medium {
+        border-left-color: #ff8c00;
+    }
+
+    .match-card.confidence-low {
+        border-left-color: #d13438;
+    }
+
+    .match-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .match-info h4 {
+        margin: 0 0 0.5rem 0;
+    }
+
+    .auto-approved-badge {
+        background: #dff6dd;
+        color: #107c10;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .confidence-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .confidence-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .confidence-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .confidence-label {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+
+    .recommendation-badge {
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .patient-column {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+
+    .patient-column h5 {
+        margin: 0 0 1rem 0;
+        color: #0078d4;
+    }
+
+    .patient-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .detail-item {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .detail-item .label {
+        font-weight: 600;
+        color: #605e5c;
+        min-width: 80px;
+    }
+
+    .detail-item .value {
+        color: #323130;
+    }
+
+    .match-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .match-arrow {
+        font-size: 2rem;
+        color: #0078d4;
+    }
+
+    .match-score-badge {
+        background: #0078d4;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .ai-reasoning-section {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .ai-reasoning-section h5 {
+        margin: 0 0 1rem 0;
+        color: #0078d4;
+    }
+
+    .reasoning-text {
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .factors-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .factors-column h6 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.875rem;
+    }
+
+    .factors-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .factors-list li {
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    .factors-list.matching li {
+        background: #dff6dd;
+        color: #107c10;
+    }
+
+    .factors-list.concerning li {
+        background: #fde7e9;
+        color: #d13438;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    .btn-success {
+        background: #107c10;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #0e6b0e;
+    }
+
+    .btn-danger {
+        background: #d13438;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #a72a2d;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+</style>

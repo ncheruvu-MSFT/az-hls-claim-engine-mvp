@@ -1,0 +1,340 @@
+@using ClaimsPortal.BlazorWasm.Services
+@using ClaimsPortal.BlazorWasm.Models
+
+<style>
+    .audit-container {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .audit-filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .filter-group select,
+    .filter-group input {
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+    }
+
+    .audit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .audit-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+    }
+
+    .audit-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .audit-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .action-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .action-create {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .action-update {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .action-merge {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .action-approve {
+        background: #c3e6cb;
+        color: #155724;
+    }
+
+    .action-reject {
+        background: #f5c6cb;
+        color: #721c24;
+    }
+
+    .source-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .source-auto {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .source-manual {
+        background: #fce4ec;
+        color: #c2185b;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+
+    .page-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .page-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .page-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+</style>
+
+<div class="audit-container">
+    <h4>📋 MDM Audit Log - @ResourceType</h4>
+    <p class="text-muted">Track all MDM operations, manual reviews, and system changes</p>
+
+    <div class="audit-filters">
+        <div class="filter-group">
+            <label>Action Type</label>
+            <select @bind="filterAction">
+                <option value="">All Actions</option>
+                <option value="CREATE">Create Link</option>
+                <option value="UPDATE">Update Link</option>
+                <option value="APPROVE">Approve Match</option>
+                <option value="REJECT">Reject Match</option>
+                <option value="MERGE">Merge Golden Resources</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Link Source</label>
+            <select @bind="filterSource">
+                <option value="">All Sources</option>
+                <option value="AUTO">Automatic</option>
+                <option value="MANUAL">Manual</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Date From</label>
+            <input type="date" @bind="filterDateFrom" />
+        </div>
+
+        <div class="filter-group">
+            <label>Date To</label>
+            <input type="date" @bind="filterDateTo" />
+        </div>
+
+        <div class="filter-group" style="display: flex; align-items: flex-end;">
+            <button class="btn-primary" style="width: 100%;" @onclick="ApplyFilters">🔍 Apply Filters</button>
+        </div>
+    </div>
+
+    @if (auditEntries.Count == 0)
+    {
+        <div class="empty-state">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+            <p>No audit entries found</p>
+        </div>
+    }
+    else
+    {
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Golden Resource</th>
+                    <th>Source Resource</th>
+                    <th>Source</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in auditEntries)
+                {
+                    <tr>
+                        <td>@entry.Timestamp.ToString("MM/dd/yyyy HH:mm:ss")</td>
+                        <td>
+                            <span class="action-badge @GetActionClass(entry.Action)">
+                                @entry.Action
+                            </span>
+                        </td>
+                        <td>@entry.UserName</td>
+                        <td><code>@entry.GoldenResourceId</code></td>
+                        <td><code>@entry.SourceResourceId</code></td>
+                        <td>
+                            <span class="source-badge @(entry.LinkSource == "AUTO" ? "source-auto" : "source-manual")">
+                                @entry.LinkSource
+                            </span>
+                        </td>
+                        <td>@entry.Details</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <button class="page-btn" @onclick="PreviousPage" disabled="@(currentPage == 1)">← Previous</button>
+            <button class="page-btn active">Page @currentPage of @totalPages</button>
+            <button class="page-btn" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next →</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ResourceType { get; set; } = "Patient";
+
+    private List<AuditEntryModel> auditEntries = new();
+    private string filterAction = string.Empty;
+    private string filterSource = string.Empty;
+    private DateTime? filterDateFrom;
+    private DateTime? filterDateTo;
+    private int currentPage = 1;
+    private int totalPages = 5;
+    private int pageSize = 50;
+
+    protected override void OnInitialized()
+    {
+        LoadAuditLog();
+    }
+
+    protected override void OnParametersSet()
+    {
+        LoadAuditLog();
+    }
+
+    private void LoadAuditLog()
+    {
+        // Mock audit data - in real implementation, call MdmService
+        auditEntries = GetMockAuditEntries();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = GetMockAuditEntries();
+
+        if (!string.IsNullOrEmpty(filterAction))
+            filtered = filtered.Where(e => e.Action == filterAction).ToList();
+
+        if (!string.IsNullOrEmpty(filterSource))
+            filtered = filtered.Where(e => e.LinkSource == filterSource).ToList();
+
+        if (filterDateFrom.HasValue)
+            filtered = filtered.Where(e => e.Timestamp >= filterDateFrom.Value).ToList();
+
+        if (filterDateTo.HasValue)
+            filtered = filtered.Where(e => e.Timestamp <= filterDateTo.Value.AddDays(1)).ToList();
+
+        auditEntries = filtered;
+        totalPages = (int)Math.Ceiling(auditEntries.Count / (double)pageSize);
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 1)
+            currentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < totalPages)
+            currentPage++;
+    }
+
+    private string GetActionClass(string action) => action switch
+    {
+        "CREATE" => "action-create",
+        "UPDATE" => "action-update",
+        "MERGE" => "action-merge",
+        "APPROVE" => "action-approve",
+        "REJECT" => "action-reject",
+        _ => "action-update"
+    };
+
+    private List<AuditEntryModel> GetMockAuditEntries()
+    {
+        return new List<AuditEntryModel>
+        {
+            new() { Timestamp = DateTime.UtcNow.AddHours(-1), Action = "APPROVE", UserName = "jane.doe@claimsiq.com", GoldenResourceId = "golden-123", SourceResourceId = "patient-456", LinkSource = "MANUAL", Details = "Manually approved match with 75% score" },
+            new() { Timestamp = DateTime.UtcNow.AddHours(-2), Action = "CREATE", UserName = "System", GoldenResourceId = "golden-789", SourceResourceId = "patient-101", LinkSource = "AUTO", Details = "Automatic match created (score: 85%)" },
+            new() { Timestamp = DateTime.UtcNow.AddHours(-3), Action = "REJECT", UserName = "john.smith@claimsiq.com", GoldenResourceId = "golden-456", SourceResourceId = "patient-789", LinkSource = "MANUAL", Details = "Rejected possible match after review" },
+            new() { Timestamp = DateTime.UtcNow.AddHours(-4), Action = "MERGE", UserName = "admin@claimsiq.com", GoldenResourceId = "golden-111", SourceResourceId = "golden-222", LinkSource = "MANUAL", Details = "Merged duplicate golden resources" },
+            new() { Timestamp = DateTime.UtcNow.AddHours(-5), Action = "CREATE", UserName = "System", GoldenResourceId = "golden-333", SourceResourceId = "patient-444", LinkSource = "AUTO", Details = "New golden resource created (no match found)" },
+            new() { Timestamp = DateTime.UtcNow.AddDays(-1), Action = "UPDATE", UserName = "jane.doe@claimsiq.com", GoldenResourceId = "golden-555", SourceResourceId = "patient-666", LinkSource = "MANUAL", Details = "Updated match result from POSSIBLE_MATCH to MATCH" },
+            new() { Timestamp = DateTime.UtcNow.AddDays(-2), Action = "APPROVE", UserName = "john.smith@claimsiq.com", GoldenResourceId = "golden-777", SourceResourceId = "patient-888", LinkSource = "MANUAL", Details = "Approved match with SSN and DOB confirmation" },
+            new() { Timestamp = DateTime.UtcNow.AddDays(-3), Action = "CREATE", UserName = "System", GoldenResourceId = "golden-999", SourceResourceId = "patient-1001", LinkSource = "AUTO", Details = "Phonetic name match detected (score: 92%)" }
+        };
+    }
+
+    private class AuditEntryModel
+    {
+        public DateTime Timestamp { get; set; }
+        public string Action { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string GoldenResourceId { get; set; } = string.Empty;
+        public string SourceResourceId { get; set; } = string.Empty;
+        public string LinkSource { get; set; } = string.Empty;
+        public string Details { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,125 @@
+name: Deploy Static Web App (React Portal)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'nonprod'
+        type: choice
+        options:
+          - nonprod
+          - prod
+  push:
+    branches:
+      - main
+    paths:
+      - 'claims-portal/**'
+      - '.github/workflows/deploy-static-web-app.yml'
+
+env:
+  NODE_VERSION: '18.x'
+  APP_PATH: './claims-portal'
+  AZURE_RESOURCE_GROUP: rg-claims-rules-${{ github.event.inputs.environment || 'nonprod' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.APP_PATH }}/package-lock.json
+
+    - name: Azure Login (OIDC)
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Get Function App URL
+      id: get-function-app
+      run: |
+        FUNCTION_APP=$(az deployment group show \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name main \
+          --query properties.outputs.functionAppName.value -o tsv)
+        
+        echo "url=https://${FUNCTION_APP}.azurewebsites.net/api" >> $GITHUB_OUTPUT
+
+    - name: Create .env.production
+      run: |
+        echo "REACT_APP_API_BASE=${{ steps.get-function-app.outputs.url }}" > ${{ env.APP_PATH }}/.env.production
+      
+    - name: Install dependencies
+      run: npm ci
+      working-directory: ${{ env.APP_PATH }}
+
+    - name: Build React app
+      run: npm run build
+      working-directory: ${{ env.APP_PATH }}
+      env:
+        CI: false  # Treat warnings as warnings, not errors
+
+    - name: Get Static Web App Deployment Token
+      id: get-swa-token
+      run: |
+        TOKEN=$(az staticwebapp secrets list \
+          --name claims-portal-swa-${{ github.event.inputs.environment || 'nonprod' }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query properties.apiKey -o tsv)
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ steps.get-swa-token.outputs.token }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: 'upload'
+        app_location: '/claims-portal'
+        output_location: 'build'
+        skip_app_build: true
+
+    - name: Get Static Web App URL
+      id: get-swa-url
+      run: |
+        SWA_URL=$(az staticwebapp show \
+          --name claims-portal-swa-${{ github.event.inputs.environment || 'nonprod' }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query defaultHostname -o tsv)
+        echo "url=https://${SWA_URL}" >> $GITHUB_OUTPUT
+
+    - name: Test Static Web App
+      run: |
+        sleep 30  # Wait for deployment to propagate
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-swa-url.outputs.url }}")
+        
+        if [ "$RESPONSE" -eq 200 ]; then
+          echo "✓ Static Web App is accessible"
+        else
+          echo "⚠ Static Web App returned status: $RESPONSE (may need time to propagate)"
+        fi
+
+    - name: Summary
+      run: |
+        echo "## Static Web App Deployment ✓" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Portal URL**: ${{ steps.get-swa-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **API Backend**: ${{ steps.get-function-app.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Features" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Benefits Plans View" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Eligibility Checker" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Claim Validator" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,284 @@
+@page "/audit"
+@using ClaimsPortal.BlazorWasm.Services
+@inject AuditLogService AuditService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Contract Audit Log - ClaimsIQ Platform</PageTitle>
+
+<div class="page-header">
+    <h3>📋 Contract Audit Log</h3>
+    <p class="subtitle">7-10 year compliance tracking with automatic archival</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h4>🔍 Search Audit Logs</h4>
+    </div>
+    <div class="card-body">
+        <div class="search-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Entity Type</label>
+                    <select class="form-control" @bind="searchRequest.EntityType">
+                        <option value="">All Types</option>
+                        <option value="ProviderContract">Provider Contract</option>
+                        <option value="Provider">Provider</option>
+                        <option value="NetworkTier">Network Tier</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Action</label>
+                    <select class="form-control" @bind="searchRequest.Action">
+                        <option value="">All Actions</option>
+                        <option value="Create">Create</option>
+                        <option value="Update">Update</option>
+                        <option value="Delete">Delete</option>
+                        <option value="StatusChange">Status Change</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" class="form-control" @bind="startDate" />
+                </div>
+
+                <div class="form-group">
+                    <label>End Date</label>
+                    <input type="date" class="form-control" @bind="endDate" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Entity ID (Contract/Provider NPI)</label>
+                    <input type="text" class="form-control" @bind="searchRequest.EntityId" 
+                           placeholder="Enter contract ID or provider NPI" />
+                </div>
+
+                <div class="form-group">
+                    <label>User</label>
+                    <input type="text" class="form-control" @bind="searchRequest.UserId" 
+                           placeholder="Enter user ID or email" />
+                </div>
+
+                <div class="form-group" style="align-self: flex-end;">
+                    <label>
+                        <input type="checkbox" @bind="searchRequest.IncludeArchived" />
+                        Include Archived (>90 days)
+                    </label>
+                    <span class="help-text">⚠️ May take longer for archived data</span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-primary" @onclick="SearchAuditLogs" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span>🔄 Searching...</span>
+                    }
+                    else
+                    {
+                        <span>🔍 Search Audit Logs</span>
+                    }
+                </button>
+                <button class="btn-secondary" @onclick="ClearSearch">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (searchResults != null)
+{
+    <div class="card">
+        <div class="card-header">
+            <h4>📊 Audit Results</h4>
+            <div class="result-count">
+                @searchResults.TotalCount records
+                @if (searchResults.HasArchivedData)
+                {
+                    <span class="archived-badge">📦 Includes Archived</span>
+                }
+            </div>
+        </div>
+        <div class="card-body">
+            @if (!searchResults.AuditLogs.Any())
+            {
+                <p class="text-muted">No audit logs found matching your criteria.</p>
+            }
+            else
+            {
+                <div class="audit-timeline">
+                    @foreach (var log in searchResults.AuditLogs)
+                    {
+                        <div class="audit-entry @(log.IsArchived ? "archived" : "")">
+                            <div class="audit-header">
+                                <div class="audit-meta">
+                                    <span class="audit-timestamp">@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss UTC")</span>
+                                    <span class="audit-action action-@log.Action.ToLower()">@log.Action</span>
+                                    <span class="audit-entity">@log.EntityType</span>
+                                    @if (log.IsArchived)
+                                    {
+                                        <span class="archived-badge">📦 Archived</span>
+                                    }
+                                </div>
+                                <div class="audit-user">
+                                    <span>👤 @log.UserName</span>
+                                    @if (!string.IsNullOrEmpty(log.UserEmail))
+                                    {
+                                        <span class="user-email">(@log.UserEmail)</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="audit-details">
+                                <div class="audit-info">
+                                    <strong>Entity ID:</strong> <code>@log.EntityId</code>
+                                </div>
+                                @if (!string.IsNullOrEmpty(log.Reason))
+                                {
+                                    <div class="audit-reason">
+                                        <strong>Reason:</strong> @log.Reason
+                                    </div>
+                                }
+                            </div>
+
+                            @if (log.Changes.Any())
+                            {
+                                <div class="audit-changes">
+                                    <button class="btn-toggle" @onclick="() => ToggleChanges(log.Id)">
+                                        @(expandedLogs.Contains(log.Id) ? "▼ Hide Changes" : "▶ Show Changes") 
+                                        (@log.Changes.Count)
+                                    </button>
+
+                                    @if (expandedLogs.Contains(log.Id))
+                                    {
+                                        <div class="changes-table">
+                                            <table class="data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Field</th>
+                                                        <th>Old Value</th>
+                                                        <th>New Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var change in log.Changes)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@change.FieldName</strong></td>
+                                                            <td class="old-value">@(change.OldValue ?? "(empty)")</td>
+                                                            <td class="new-value">@(change.NewValue ?? "(empty)")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (log.IsArchived && !string.IsNullOrEmpty(log.BlobStoragePath))
+                            {
+                                <div class="audit-archive-info">
+                                    <small>📦 Archived to Blob Storage: @log.BlobStoragePath</small>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (searchResults.TotalPages > 1)
+                {
+                    <div class="pagination">
+                        <button class="btn-secondary" @onclick="PreviousPage" disabled="@(searchRequest.PageNumber <= 1)">
+                            ← Previous
+                        </button>
+                        <span class="page-info">
+                            Page @searchRequest.PageNumber of @searchResults.TotalPages
+                        </span>
+                        <button class="btn-secondary" @onclick="NextPage" disabled="@(searchRequest.PageNumber >= searchResults.TotalPages)">
+                            Next →
+                        </button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="card info-card">
+        <div class="card-body">
+            <h5>ℹ️ Audit Retention Policy</h5>
+            <ul>
+                <li><strong>Recent Data (0-90 days):</strong> Stored in Cosmos DB for fast queries</li>
+                <li><strong>Archived Data (>90 days):</strong> Moved to Azure Blob Storage with Archive tier</li>
+                <li><strong>Retention Period:</strong> 7-10 years for compliance</li>
+                <li><strong>Archival Process:</strong> Automatic monthly archival (1st of each month at 2 AM UTC)</li>
+                <li><strong>Cost Optimization:</strong> Archive tier costs ~$0.002/GB/month (99% cheaper than Cosmos DB)</li>
+            </ul>
+        </div>
+    </div>
+}
+
+@code {
+    private AuditSearchRequest searchRequest = new();
+    private AuditSearchResponse? searchResults;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private bool isLoading = false;
+    private HashSet<string> expandedLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Default to last 30 days
+        startDate = DateTime.Now.AddDays(-30);
+        endDate = DateTime.Now;
+    }
+
+    private async Task SearchAuditLogs()
+    {
+        isLoading = true;
+
+        // Apply dates
+        searchRequest.StartDate = startDate;
+        searchRequest.EndDate = endDate?.AddDays(1); // Include full end date
+
+        searchResults = await AuditService.SearchAuditLogsAsync(searchRequest);
+        isLoading = false;
+    }
+
+    private void ClearSearch()
+    {
+        searchRequest = new AuditSearchRequest();
+        startDate = DateTime.Now.AddDays(-30);
+        endDate = DateTime.Now;
+        searchResults = null;
+        expandedLogs.Clear();
+    }
+
+    private void ToggleChanges(string logId)
+    {
+        if (expandedLogs.Contains(logId))
+            expandedLogs.Remove(logId);
+        else
+            expandedLogs.Add(logId);
+    }
+
+    private async Task PreviousPage()
+    {
+        if (searchRequest.PageNumber > 1)
+        {
+            searchRequest.PageNumber--;
+            await SearchAuditLogs();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (searchResults != null && searchRequest.PageNumber < searchResults.TotalPages)
+        {
+            searchRequest.PageNumber++;
+            await SearchAuditLogs();
+        }
+    }
+}

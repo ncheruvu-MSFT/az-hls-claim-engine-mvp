@@ -1,0 +1,42 @@
+{
+  "resourceType": "DiagnosticReport",
+  "id": "report-lipid-dec2025",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+          "code": "LAB"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "57698-3",
+        "display": "Lipid panel with direct LDL - Serum or Plasma"
+      }
+    ],
+    "text": "Lipid Panel"
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1"
+  },
+  "effectiveDateTime": "2025-12-28T07:45:00Z",
+  "issued": "2025-12-28T12:30:00Z",
+  "performer": [
+    {
+      "reference": "Practitioner/dr-chen",
+      "display": "Dr. Michael Chen"
+    }
+  ],
+  "result": [
+    {
+      "reference": "Observation/lipid-total-cholesterol"
+    }
+  ],
+  "conclusion": "Lipid levels within optimal range. Continue current statin therapy."
+}

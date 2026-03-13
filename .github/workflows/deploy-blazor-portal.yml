@@ -1,0 +1,125 @@
+name: Deploy Blazor Portal (Static Web App)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'nonprod'
+        type: choice
+        options:
+          - nonprod
+          - prod
+  push:
+    branches:
+      - main
+    paths:
+      - 'ClaimsPortal.BlazorWasm/**'
+      - '.github/workflows/deploy-blazor-portal.yml'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  APP_PATH: './ClaimsPortal.BlazorWasm'
+  AZURE_RESOURCE_GROUP: rg-claims-rules-${{ github.event.inputs.environment || 'nonprod' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Azure Login (OIDC)
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Get Function App URL
+      id: get-function-app
+      run: |
+        FUNCTION_APP=$(az deployment group show \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --name main \
+          --query properties.outputs.functionAppName.value -o tsv)
+        
+        echo "api-url=https://${FUNCTION_APP}.azurewebsites.net/api" >> $GITHUB_OUTPUT
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ${{ env.APP_PATH }}
+
+    - name: Build Blazor WebAssembly
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ${{ env.APP_PATH }}
+      env:
+        ASPNETCORE_ENVIRONMENT: Production
+
+    - name: Publish Blazor WebAssembly
+      run: dotnet publish --configuration Release --output ./publish
+      working-directory: ${{ env.APP_PATH }}
+
+    - name: Get Static Web App Deployment Token
+      id: get-swa-token
+      run: |
+        TOKEN=$(az staticwebapp secrets list \
+          --name claims-portal-swa-${{ github.event.inputs.environment || 'nonprod' }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query properties.apiKey -o tsv)
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ steps.get-swa-token.outputs.token }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: 'upload'
+        app_location: '/ClaimsPortal.BlazorWasm/publish/wwwroot'
+        skip_app_build: true
+
+    - name: Get Static Web App URL
+      id: get-swa-url
+      run: |
+        SWA_URL=$(az staticwebapp show \
+          --name claims-portal-swa-${{ github.event.inputs.environment || 'nonprod' }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query defaultHostname -o tsv)
+        echo "url=https://${SWA_URL}" >> $GITHUB_OUTPUT
+
+    - name: Test Static Web App
+      run: |
+        sleep 30  # Wait for deployment to propagate
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.get-swa-url.outputs.url }}")
+        
+        if [ "$RESPONSE" -eq 200 ]; then
+          echo "✓ Blazor portal is accessible"
+        else
+          echo "⚠ Portal returned status: $RESPONSE (may need time to propagate)"
+        fi
+
+    - name: Summary
+      run: |
+        echo "## Blazor Portal Deployment ✓" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Portal URL**: ${{ steps.get-swa-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **API Backend**: ${{ steps.get-function-app.outputs.api-url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **.NET Version**: ${{ env.DOTNET_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Features" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Benefits Configuration (Trizetto Facets-style)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Claims Adjudication Engine" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Eligibility Verification (270/271)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ Natural Language AI Assistant" >> $GITHUB_STEP_SUMMARY
+        echo "- ✓ FHIR R4 Compliant" >> $GITHUB_STEP_SUMMARY

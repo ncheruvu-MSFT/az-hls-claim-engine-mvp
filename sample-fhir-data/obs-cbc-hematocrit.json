@@ -1,0 +1,58 @@
+{
+  "resourceType": "Observation",
+  "id": "cbc-hematocrit",
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "laboratory"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "4544-3",
+        "display": "Hematocrit [Volume Fraction] of Blood"
+      }
+    ],
+    "text": "Hematocrit"
+  },
+  "subject": {
+    "reference": "Patient/example-patient-1"
+  },
+  "effectiveDateTime": "2026-01-05T08:30:00Z",
+  "valueQuantity": {
+    "value": 39,
+    "unit": "%",
+    "system": "http://unitsofmeasure.org",
+    "code": "%"
+  },
+  "interpretation": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+          "code": "L",
+          "display": "Low"
+        }
+      ]
+    }
+  ],
+  "referenceRange": [
+    {
+      "low": {
+        "value": 42,
+        "unit": "%"
+      },
+      "high": {
+        "value": 52,
+        "unit": "%"
+      }
+    }
+  ]
+}

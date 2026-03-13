@@ -1,0 +1,241 @@
+@page "/claims-engine"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject ClaimsApiService ApiService
+@inject NaturalLanguageService NlService
+
+<PageTitle>Claims Engine - ClaimsIQ Platform</PageTitle>
+
+<div class="claims-engine-container">
+    <div class="page-header">
+        <h3>⚙️ Claims Adjudication Engine</h3>
+        <p class="subtitle">Real-time Claims Validation with FHIR-compliant Rules</p>
+    </div>
+
+    <!-- Natural Language Assistant -->
+    <div class="nl-assistant">
+        <div class="assistant-header">
+            <span class="icon">💬</span>
+            <strong>Ask AI Assistant</strong>
+        </div>
+        <div class="assistant-input-group">
+            <input type="text" 
+                   @bind="nlQuery" 
+                   @bind:event="oninput"
+                   @onkeydown="HandleKeyPress"
+                   placeholder="Ask about claim status, CPT codes, adjudication rules..." 
+                   class="nl-input" />
+            <button @onclick="GetNlAssistance" class="btn-ask">Ask</button>
+        </div>
+        
+        @if (nlResponse != null)
+        {
+            <div class="nl-response">
+                <div class="response-content">
+                    <strong>💡 Answer:</strong>
+                    <p>@nlResponse.ConfigurationSuggestion</p>
+                </div>
+                @if (nlResponse.CPTCodesIdentified?.Any() == true)
+                {
+                    <div class="fhir-mapping">
+                        <strong>🔗 CPT Codes:</strong>
+                        <code>@string.Join(", ", nlResponse.CPTCodesIdentified)</code>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="validation-form">
+        <h4>Submit Claim for Validation</h4>
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Patient ID:</label>
+                <input type="text" @bind="request.PatientId" class="form-control" placeholder="PAT001" />
+            </div>
+
+            <div class="form-group">
+                <label>Plan ID:</label>
+                <select @bind="request.PlanId" class="form-control">
+                    <option value="">Select Plan</option>
+                    <option value="PLAN001">PLAN001 - Gold PPO</option>
+                    <option value="PLAN002">PLAN002 - Silver HMO</option>
+                    <option value="PLAN003">PLAN003 - Bronze Catastrophic</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Service Date:</label>
+                <input type="date" @bind="request.ServiceDate" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label>CPT/Service Code:</label>
+                <input type="text" @bind="request.ServiceCode" class="form-control" placeholder="99213" />
+                <small class="help-text">Common: 99213 (Office Visit), 99214 (Detailed Visit), 99215 (Complex Visit)</small>
+            </div>
+
+            <div class="form-group">
+                <label>Billed Amount:</label>
+                <input type="number" @bind="request.BilledAmount" class="form-control" placeholder="500.00" step="0.01" />
+            </div>
+
+            <div class="form-group">
+                <label>Provider ID:</label>
+                <input type="text" @bind="request.ProviderId" class="form-control" placeholder="PROV001" />
+            </div>
+
+            <div class="form-group">
+                <label>YTD Patient Spending:</label>
+                <input type="number" @bind="request.YearToDateSpending" class="form-control" placeholder="300.00" step="0.01" />
+                <small class="help-text">Amount patient has paid toward deductible this year</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button @onclick="ValidateClaim" class="btn-primary" disabled="@isValidating">
+                @if (isValidating)
+                {
+                    <span>⏳ Validating...</span>
+                }
+                else
+                {
+                    <span>✓ Validate Claim</span>
+                }
+            </button>
+            <button @onclick="ResetForm" class="btn-secondary">Reset</button>
+        </div>
+    </div>
+
+    @if (validationResult != null)
+    {
+        <div class="validation-result @(validationResult.IsApproved ? "approved" : "denied")">
+            <div class="result-header">
+                <span class="status-icon">@(validationResult.IsApproved ? "✅" : "❌")</span>
+                <h4>@(validationResult.IsApproved ? "Claim Approved" : "Claim Denied")</h4>
+            </div>
+
+            <div class="result-details">
+                <div class="amount-row">
+                    <span class="label">Patient Responsibility:</span>
+                    <span class="amount patient">$@validationResult.PatientResponsibility.ToString("N2")</span>
+                </div>
+                <div class="amount-row">
+                    <span class="label">Insurance Payment:</span>
+                    <span class="amount insurance">$@validationResult.InsurancePayment.ToString("N2")</span>
+                </div>
+                <div class="amount-row">
+                    <span class="label">Total Billed:</span>
+                    <span class="amount total">$@request.BilledAmount.ToString("N2")</span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(validationResult.Explanation))
+            {
+                <div class="explanation">
+                    <strong>Explanation:</strong>
+                    <p>@validationResult.Explanation</p>
+                </div>
+            }
+
+            @if (validationResult.Errors.Any())
+            {
+                <div class="validation-messages errors">
+                    <strong>❌ Errors:</strong>
+                    <ul>
+                        @foreach (var error in validationResult.Errors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (validationResult.Warnings.Any())
+            {
+                <div class="validation-messages warnings">
+                    <strong>⚠️ Warnings:</strong>
+                    <ul>
+                        @foreach (var warning in validationResult.Warnings)
+                        {
+                            <li>@warning</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <div class="fhir-section">
+                <strong>FHIR ClaimResponse Structure:</strong>
+                <code class="fhir-resource">
+                    ClaimResponse.status = "@(validationResult.IsApproved ? "active" : "cancelled")"<br/>
+                    ClaimResponse.outcome = "@(validationResult.IsApproved ? "complete" : "error")"<br/>
+                    ClaimResponse.item[0].adjudication[0].category = "submitted"<br/>
+                    ClaimResponse.item[0].adjudication[0].amount.value = @request.BilledAmount<br/>
+                    ClaimResponse.item[0].adjudication[1].category = "benefit"<br/>
+                    ClaimResponse.item[0].adjudication[1].amount.value = @validationResult.InsurancePayment<br/>
+                    ClaimResponse.patient.amount.value = @validationResult.PatientResponsibility
+                </code>
+            </div>
+        </div>
+    }
+
+    @if (validationError != null)
+    {
+        <div class="validation-error">
+            <strong>❌ Validation Error:</strong>
+            <p>@validationError</p>
+        </div>
+    }
+</div>
+
+@code {
+    private ClaimValidationRequest request = new() { ServiceDate = DateTime.Today };
+    private ClaimValidationResult? validationResult;
+    private string? validationError;
+    private bool isValidating = false;
+    private string nlQuery = string.Empty;
+    private string nlAnswer = string.Empty;
+    private BenefitConfigResponse? nlResponse;
+
+    private async Task ValidateClaim()
+    {
+        validationError = null;
+        validationResult = null;
+        isValidating = true;
+
+        try
+        {
+            validationResult = await ApiService.ValidateClaimAsync(request);
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Failed to validate claim: {ex.Message}";
+        }
+        finally
+        {
+            isValidating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        request = new ClaimValidationRequest { ServiceDate = DateTime.Today };
+        validationResult = null;
+        validationError = null;
+    }
+
+    private async Task GetNlAssistance()
+    {
+        if (string.IsNullOrWhiteSpace(nlQuery)) return;
+        nlAnswer = await NlService.GetAnswerAsync(nlQuery);
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await GetNlAssistance();
+        }
+    }
+}

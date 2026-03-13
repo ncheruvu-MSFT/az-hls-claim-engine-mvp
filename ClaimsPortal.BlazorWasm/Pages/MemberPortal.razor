@@ -1,0 +1,924 @@
+@page "/member-portal"
+@using ClaimsPortal.BlazorWasm.Services
+@inject MemberPortalService PortalService
+@inject EOBDocumentService EOBService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Member Portal - ClaimsIQ</PageTitle>
+
+<div class="container-fluid">
+    @if (!isAuthenticated)
+    {
+        <!-- Login Section -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">👤 Member Login</h2>
+                        <p class="text-muted text-center mb-4">Access your health information securely</p>
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Member ID</label>
+                            <input type="text" class="form-control" @bind="loginMemberId" placeholder="e.g., SUB001" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Last 4 of SSN</label>
+                            <input type="password" class="form-control" @bind="loginSsn" maxlength="4" placeholder="1234" />
+                        </div>
+                        
+                        <button class="btn btn-primary w-100" @onclick="LoginAsync" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            🔑 Sign In
+                        </button>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                Demo: SUB001 | SSN: 1234
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Member Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="member-avatar me-3">@GetInitials(memberName)</div>
+                                <div>
+                                    <h4 class="mb-0">@memberName</h4>
+                                    <small class="text-muted">Member ID: @memberId | @planName</small>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" @onclick="Logout">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <button class="nav-link @(activeTab == "overview" ? "active" : "")" @onclick='() => activeTab = "overview"'>
+                    🏠 Overview
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(activeTab == "benefits" ? "active" : "")" @onclick='() => activeTab = "benefits"'>
+                    🏥 Benefits
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(activeTab == "claims" ? "active" : "")" @onclick='() => activeTab = "claims"'>
+                    📋 Claims
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(activeTab == "providers" ? "active" : "")" @onclick='() => activeTab = "providers"'>
+                    👨‍⚕️ Find Care
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(activeTab == "documents" ? "active" : "")" @onclick='() => activeTab = "documents"'>
+                    📄 Documents
+                </button>
+            </li>
+        </ul>
+
+        <!-- Overview Tab -->
+        @if (activeTab == "overview")
+        {
+            <div class="row g-3">
+                <!-- Spending Summary Cards - Compact Layout -->
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">🏥 Medical OOP</h6>
+                            <h3 class="card-title">@($"{accumulators?.MedicalOOPYTD:C0}") <small class="text-muted">/ @($"{accumulators?.MedicalOOPMax:C0}")</small></h3>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" style="width: @GetProgressPercent(accumulators?.MedicalOOPYTD ?? 0, accumulators?.MedicalOOPMax ?? 1)%"></div>
+                            </div>
+                            <small class="text-muted">@($"{accumulators?.MedicalOOPMax - accumulators?.MedicalOOPYTD:C0}") remaining</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">🦷 Dental Spent</h6>
+                            <h3 class="card-title">@($"{accumulators?.DentalSpentYTD:C0}") <small class="text-muted">/ @($"{accumulators?.DentalMax:C0}")</small></h3>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: @GetProgressPercent(accumulators?.DentalSpentYTD ?? 0, accumulators?.DentalMax ?? 1)%"></div>
+                            </div>
+                            <small class="text-muted">@($"{accumulators?.DentalMax - accumulators?.DentalSpentYTD:C0}") remaining</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">💊 Pharmacy OOP</h6>
+                            <h3 class="card-title">@($"{accumulators?.PharmacyOOPYTD:C0}") <small class="text-muted">/ @($"{accumulators?.PharmacyOOPMax:C0}")</small></h3>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: @GetProgressPercent(accumulators?.PharmacyOOPYTD ?? 0, accumulators?.PharmacyOOPMax ?? 1)%"></div>
+                            </div>
+                            <small class="text-muted">@($"{accumulators?.PharmacyOOPMax - accumulators?.PharmacyOOPYTD:C0}") remaining</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">⭐ Quality Score</h6>
+                            <h3 class="card-title">@(accumulators?.QualityScore ?? 0)%</h3>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" style="width: @(accumulators?.QualityScore ?? 0)%"></div>
+                            </div>
+                            <small class="text-muted">Based on preventive care</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Claims -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">📋 Recent Claims</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (claims == null)
+                            {
+                                <div class="text-center py-3">
+                                    <div class="spinner-border text-primary"></div>
+                                    <p class="text-muted mt-2">Loading claims from FHIR ExplanationOfBenefit...</p>
+                                </div>
+                            }
+                            else if (!claims.Any())
+                            {
+                                <p class="text-muted">No recent claims found in FHIR server.</p>
+                            }
+                            else
+                            {
+                                <div class="list-group list-group-flush">
+                                    @foreach (var claim in claims.Take(3))
+                                    {
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-bold">@claim.ServiceDescription</div>
+                                                <small class="text-muted">@claim.ProviderName | @claim.ServiceDate</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge @GetStatusBadgeClass(claim.Status)">@claim.Status</span>
+                                                <br/>
+                                                <small class="text-muted">You pay: @($"{claim.PatientResponsibility:C}")</small>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <button class="btn btn-link mt-2" @onclick='() => activeTab = "claims"'>View All Claims →</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Care Gaps -->
+                @if (careGaps?.Any() == true)
+                {
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h5 class="mb-0">⚕️ Recommended Care</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    @foreach (var gap in careGaps.Take(2))
+                                    {
+                                        <div class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-bold">@gap.Title</div>
+                                                <small>@gap.Description</small>
+                                            </div>
+                                            <button class="btn btn-primary btn-sm" @onclick='() => activeTab = "providers"'>Schedule</button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Benefits Tab -->
+        @if (activeTab == "benefits")
+        {
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">🏥 My Coverage</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (coverageInfo == null)
+                            {
+                                <div class="text-center py-3">
+                                    <div class="spinner-border text-primary"></div>
+                                    <p class="text-muted mt-2">Loading coverage from FHIR...</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4">
+                                        <div class="border rounded p-3">
+                                            <h6 class="text-muted">Plan Name</h6>
+                                            <p class="mb-0 fw-bold">@coverageInfo.PlanName</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <div class="border rounded p-3">
+                                            <h6 class="text-muted">Coverage Period</h6>
+                                            <p class="mb-0">@coverageInfo.PeriodStart - @coverageInfo.PeriodEnd</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <div class="border rounded p-3">
+                                            <h6 class="text-muted">Status</h6>
+                                            <p class="mb-0"><span class="badge bg-success">@coverageInfo.Status</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4" />
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6">
+                                        <h6>💰 Medical Deductible</h6>
+                                        <div class="list-group list-group-flush">
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>YTD Paid:</span>
+                                                <strong>@($"{accumulators?.MedicalDeductibleYTD:C}")</strong>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>Annual Max:</span>
+                                                <strong>@($"{accumulators?.MedicalDeductibleMax:C}")</strong>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>Remaining:</span>
+                                                <strong>@($"{accumulators?.MedicalDeductibleMax - accumulators?.MedicalDeductibleYTD:C}")</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-md-6">
+                                        <h6>🛡️ Out-of-Pocket Maximum</h6>
+                                        <div class="list-group list-group-flush">
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>YTD Spending:</span>
+                                                <strong>@($"{accumulators?.MedicalOOPYTD:C}")</strong>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>Annual Maximum:</span>
+                                                <strong>@($"{accumulators?.MedicalOOPMax:C}")</strong>
+                                            </div>
+                                            <div class="list-group-item d-flex justify-content-between">
+                                                <span>Protection Remaining:</span>
+                                                <strong>@($"{accumulators?.MedicalOOPMax - accumulators?.MedicalOOPYTD:C}")</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Claims Tab -->
+        @if (activeTab == "claims")
+        {
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📋 Claims History from FHIR</h5>
+                    <button class="btn btn-sm btn-primary" @onclick="LoadClaimsAsync" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (claims == null)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Loading ExplanationOfBenefit resources from FHIR server...</p>
+                        </div>
+                    }
+                    else if (!claims.Any())
+                    {
+                        <div class="alert alert-info">
+                            <strong>No claims found</strong><br/>
+                            No ExplanationOfBenefit resources found in FHIR server for this patient.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Provider</th>
+                                        <th>Service</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Billed</th>
+                                        <th class="text-end">You Pay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var claim in claims)
+                                    {
+                                        <tr>
+                                            <td>@claim.ServiceDate</td>
+                                            <td>@claim.ProviderName</td>
+                                            <td>@claim.ServiceDescription</td>
+                                            <td><span class="badge @GetStatusBadgeClass(claim.Status)">@claim.Status</span></td>
+                                            <td class="text-end">@($"{claim.BilledAmount:C}")</td>
+                                            <td class="text-end">@($"{claim.PatientResponsibility:C}")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Providers Tab -->
+        @if (activeTab == "providers")
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">👨‍⚕️ Find a Provider from FHIR</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-4">
+                        <input type="text" class="form-control" placeholder="Search by name or specialty..." @bind="providerSearchTerm" @bind:event="oninput" />
+                        <button class="btn btn-primary" @onclick="SearchProvidersAsync" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            🔍 Search
+                        </button>
+                    </div>
+
+                    @if (providers == null)
+                    {
+                        <div class="alert alert-info">
+                            <strong>Search for providers</strong><br/>
+                            Enter a search term to find providers from FHIR PractitionerRole resources.
+                        </div>
+                    }
+                    else if (isLoading)
+                    {
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="text-muted mt-2">Searching FHIR server...</p>
+                        </div>
+                    }
+                    else if (!providers.Any())
+                    {
+                        <div class="alert alert-warning">
+                            No providers found. Try a different search term.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var provider in providers)
+                            {
+                                <div class="col-12 col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">@provider.Name</h5>
+                                            <p class="card-text">
+                                                <small class="text-muted">@provider.Specialty</small><br/>
+                                                <small>📍 @provider.LocationName</small><br/>
+                                                @if (provider.IsAcceptingPatients)
+                                                {
+                                                    <span class="badge bg-success mt-2">Accepting New Patients</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary mt-2">Not Accepting</span>
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Documents Tab -->
+        @if (activeTab == "documents")
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📄 Explanation of Benefits (EOB) Documents</h5>
+                    <button class="btn btn-sm btn-primary" @onclick="LoadEOBDocumentsAsync" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Loading EOB documents from FHIR...</p>
+                        </div>
+                    }
+                    else if (eobDocuments == null || !eobDocuments.Any())
+                    {
+                        <div class="alert alert-info">
+                            <strong>📋 No EOB documents yet</strong><br/>
+                            EOB documents will appear here after claims are processed.<br/>
+                            <button class="btn btn-sm btn-primary mt-2" @onclick="GenerateSampleEOB">
+                                ✨ Generate Sample EOB
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class=\"table table-hover\">
+                                <thead>
+                                    <tr>
+                                        <th>📅 Date</th>
+                                        <th>🏥 Provider</th>
+                                        <th>💰 Total Billed</th>
+                                        <th>💳 Plan Paid</th>
+                                        <th>💵 You Owe</th>
+                                        <th>📄 Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var eob in eobDocuments)
+                                    {
+                                        <tr>
+                                            <td>@eob.ServiceDate.ToString("MM/dd/yyyy")</td>
+                                            <td>
+                                                <div>@eob.ProviderName</div>
+                                                <small class="text-muted">NPI: @eob.ProviderNPI</small>
+                                            </td>
+                                            <td>@($"{eob.TotalBilled:C}")</td>
+                                            <td class="text-success">@($"{eob.TotalPaid:C}")</td>
+                                            <td class="text-danger fw-bold">@($"{eob.MemberResponsibility:C}")</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => ViewEOBDetails(eob)">
+                                                    👁️ View
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-success" @onclick="() => DownloadEOBPdf(eob.DocumentId)">
+                                                    📥 PDF
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- EOB Detail Modal -->
+            @if (selectedEOB != null)
+            {
+                <div class="modal show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">📄 Explanation of Benefits Details</h5>
+                                <button type="button" class="btn-close" @onclick="() => selectedEOB = null"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <strong>Claim Number:</strong> @selectedEOB.ClaimNumber<br/>
+                                        <strong>Service Date:</strong> @selectedEOB.ServiceDate.ToString("MM/dd/yyyy")<br/>
+                                        <strong>Provider:</strong> @selectedEOB.ProviderName
+                                    </div>
+                                    <div class="col-6">
+                                        <strong>Total Billed:</strong> @($"{selectedEOB.TotalBilled:C}")<br/>
+                                        <strong>Plan Paid:</strong> @($"{selectedEOB.TotalPaid:C}")<br/>
+                                        <strong>You Owe:</strong> <span class="text-danger fw-bold">@($"{selectedEOB.MemberResponsibility:C}")</span>
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4">📋 Service Details</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Service</th>
+                                                <th>Code</th>
+                                                <th>Billed</th>
+                                                <th>Allowed</th>
+                                                <th>Plan Paid</th>
+                                                <th>You Owe</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in selectedEOB.LineItems)
+                                            {
+                                                <tr>
+                                                    <td>@item.ServiceDescription</td>
+                                                    <td>@item.ProcedureCode</td>
+                                                    <td>@($"{item.BilledAmount:C}")</td>
+                                                    <td>@($"{item.AllowedAmount:C}")</td>
+                                                    <td>@($"{item.PaidByPlan:C}")</td>
+                                                    <td>@($"{item.MemberOwes:C}")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-primary" @onclick="() => DownloadEOBPdf(selectedEOB.DocumentId)">
+                                    📥 Download PDF
+                                </button>
+                                <button type="button" class="btn btn-secondary" @onclick="() => selectedEOB = null">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- FHIR Documents Section -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📑 Other Documents from FHIR</h5>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="LoadDocumentsAsync" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Refresh
+                    </button>
+                </div>
+                <div class="card-body">"
+                    @if (documents == null)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2 text-muted">Loading DocumentReference resources from FHIR...</p>
+                        </div>
+                    }
+                    else if (!documents.Any())
+                    {
+                        <div class="alert alert-info">
+                            <strong>No documents available</strong><br/>
+                            No DocumentReference resources found in FHIR server.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var doc in documents)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-3 fs-3">📄</span>
+                                        <div>
+                                            <div class="fw-bold">@doc.Title</div>
+                                            <small class="text-muted">@doc.Date</small>
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(doc.ContentUrl))
+                                    {
+                                        <a href="@doc.ContentUrl" target="_blank" class="btn btn-sm btn-primary">📥 Download</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">No URL available</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    // Authentication state
+    private bool isAuthenticated = false;
+    private string loginMemberId = string.Empty;
+    private string loginSsn = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    // Member info from FHIR
+    private string patientId = string.Empty;
+    private string memberId = string.Empty;
+    private string memberName = string.Empty;
+    private string planName = string.Empty;
+
+    // Navigation
+    private string activeTab = "overview";
+
+    // Data from FHIR and APIs - NO MOCK DATA HERE
+    private MemberCoverageInfo? coverageInfo;
+    private MemberAccumulators? accumulators;
+    private List<MemberClaim>? claims;
+    private List<CareGapItem>? careGaps;
+    private List<ProviderInfo>? providers;
+    private List<MemberDocument>? documents;
+    private List<EOBDocument>? eobDocuments;
+    private EOBDocument? selectedEOB;
+
+    // Search
+    private string providerSearchTerm = string.Empty;
+
+    private async System.Threading.Tasks.Task LoginAsync()
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+
+        try
+        {
+            // Authenticate against FHIR Patient resource
+            var authResult = await PortalService.AuthenticateMemberAsync(loginMemberId, loginSsn);
+
+            if (authResult != null && authResult.IsAuthenticated)
+            {
+                isAuthenticated = true;
+                patientId = authResult.PatientId;
+                memberId = authResult.MemberId;
+                memberName = authResult.FullName;
+
+                // Load all member data from FHIR/APIs
+                await LoadMemberDataAsync();
+            }
+            else
+            {
+                errorMessage = "Invalid credentials. Please check your Member ID and Last 4 of SSN, or try demo: MEM001 / 1234";
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            // Handle FHIR server connectivity and authentication issues
+            if (httpEx.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                httpEx.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                errorMessage = "Unable to verify with FHIR server. Try demo credentials: Member ID 'MEM001', SSN '1234'";
+            }
+            else if (httpEx.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                errorMessage = "Member not found. Try demo credentials: Member ID 'MEM001', SSN '1234'";
+            }
+            else
+            {
+                errorMessage = $"FHIR server temporarily unavailable. Try demo: Member ID 'MEM001', SSN '1234'";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Unable to connect to member database. Try demo credentials: Member ID 'MEM001', SSN '1234'";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task LoadMemberDataAsync()
+    {
+        // Load coverage from FHIR Coverage resource
+        coverageInfo = await PortalService.GetCoverageInfoAsync(patientId);
+        if (coverageInfo != null)
+        {
+            planName = coverageInfo.PlanName;
+        }
+
+        // Load accumulators from custom API (reads from CosmosDB)
+        accumulators = await PortalService.GetAccumulatorsAsync(memberId);
+
+        // Load claims from FHIR ExplanationOfBenefit resources
+        await LoadClaimsAsync();
+
+        // Load care gaps from FHIR Condition resources
+        careGaps = await PortalService.GetCareGapsAsync(patientId);
+    }
+
+    private async System.Threading.Tasks.Task LoadClaimsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            claims = await PortalService.GetMemberClaimsAsync(patientId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task LoadDocumentsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            documents = await PortalService.GetDocumentsAsync(patientId);
+            // Also load EOB documents
+            await LoadEOBDocumentsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task SearchProvidersAsync()
+    {
+        if (string.IsNullOrWhiteSpace(providerSearchTerm))
+            return;
+
+        isLoading = true;
+        try
+        {
+            providers = await PortalService.SearchProvidersAsync(providerSearchTerm);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Logout()
+    {
+        isAuthenticated = false;
+        patientId = string.Empty;
+        memberId = string.Empty;
+        memberName = string.Empty;
+        planName = string.Empty;
+        activeTab = "overview";
+        coverageInfo = null;
+        accumulators = null;
+        claims = null;
+        careGaps = null;
+        providers = null;
+        documents = null;
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "??";
+        var parts = name.Split(' ');
+        return parts.Length >= 2 ? $"{parts[0][0]}{parts[1][0]}" : name.Substring(0, Math.Min(2, name.Length));
+    }
+
+    private double GetProgressPercent(decimal current, decimal max)
+    {
+        if (max == 0) return 0;
+        return Math.Min(100, (double)(current / max * 100));
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" => "bg-success",
+            "processing" => "bg-warning",
+            "cancelled" => "bg-secondary",
+            "denied" => "bg-danger",
+            _ => "bg-info"
+        };
+    }
+
+    // EOB Document Methods
+    private async Task LoadEOBDocumentsAsync()
+    {
+        try
+        {
+            eobDocuments = await EOBService.GetMemberEOBsAsync(memberId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading EOB documents: {ex.Message}");
+            eobDocuments = new List<EOBDocument>();
+        }
+    }
+
+    private async Task GenerateSampleEOB()
+    {
+        try
+        {
+            isLoading = true;
+            // Generate EOB for the first claim if available
+            var sampleClaimId = claims?.FirstOrDefault()?.ClaimId ?? "CLM001";
+            await EOBService.GenerateEOBPdfAsync(sampleClaimId, memberId);
+            await LoadEOBDocumentsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating EOB: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewEOBDetails(EOBDocument eob)
+    {
+        selectedEOB = eob;
+    }
+
+    private void CloseEOBModal()
+    {
+        selectedEOB = null;
+    }
+
+    private async Task DownloadEOBPdf(string documentId)
+    {
+        try
+        {
+            var pdfContent = await EOBService.DownloadEOBPdfAsync(documentId);
+            // Trigger browser download
+            var dataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(pdfContent)}";
+            await JSRuntime.InvokeVoidAsync("downloadFile", dataUrl, $"EOB_{documentId}.pdf");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading EOB PDF: {ex.Message}");
+        }
+    }
+}
+
+<style>
+.member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #605e5c;
+    background: transparent;
+    cursor: pointer;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0078d4;
+    border-bottom: 3px solid #0078d4;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: transparent;
+    background: rgba(0, 120, 212, 0.05);
+}
+</style>

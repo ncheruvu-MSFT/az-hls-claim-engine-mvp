@@ -1,0 +1,662 @@
+[
+  {
+    "name": "SearchAuditLogs",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.AuditFn.SearchAuditLogs",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "audit/search",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetContractAuditSummary",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.AuditFn.GetContractAuditSummary",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "get"
+        ],
+        "route": "audit/contract/{contractId}/summary",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "ArchiveAuditLogs",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.AuditFn.ArchiveAuditLogs",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "audit/archive",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "ScheduledArchiveAuditLogs",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.AuditFn.ScheduledArchiveAuditLogs",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "timerInfo",
+        "direction": "In",
+        "type": "timerTrigger",
+        "schedule": "0 0 2 1 * *",
+        "properties": {}
+      }
+    ]
+  },
+  {
+    "name": "get-plans",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.BenefitsFn.GetPlans",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "get-plan",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.BenefitsFn.GetPlan",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "route": "plans/{planId}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "check-eligibility",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.BenefitsFn.CheckEligibility",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "csv-ingest",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.CsvIngestFn.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "post"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "edi-ingest",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.EdiIngestFn.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "post"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GenerateEOB",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.EOBFn.GenerateEOB",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "post"
+        ],
+        "route": "eob/generate",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetMemberEOBs",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.EOBFn.GetMemberEOBs",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "route": "eob/member/{memberId}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "DownloadEOBPdf",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.EOBFn.DownloadEOBPdf",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "route": "eob/{documentId}/pdf",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "health",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.HealthFn.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "get"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "SearchProviders",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.SearchProviders",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "providers/search",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetProviderByNPI",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.GetProviderByNPI",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "get"
+        ],
+        "route": "providers/{npi}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "AddProvider",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.AddProvider",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "providers",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "UpdateProvider",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.UpdateProvider",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "put"
+        ],
+        "route": "providers/{npi}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "UpdateProviderTier",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.UpdateProviderTier",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "put"
+        ],
+        "route": "providers/{npi}/tier",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "RemoveProvider",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.RemoveProvider",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "delete"
+        ],
+        "route": "providers/{npi}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetContracts",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.GetContracts",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "get"
+        ],
+        "route": "contracts",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetContractById",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.GetContractById",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "get"
+        ],
+        "route": "contracts/{contractId}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "CreateContract",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.CreateContract",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "contracts",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "UpdateContract",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.UpdateContract",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "put"
+        ],
+        "route": "contracts/{contractId}",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "GetNetworkTiers",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.ProviderNetworkFn.GetNetworkTiers",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "get"
+        ],
+        "route": "network-tiers",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
+    "name": "validate-claim",
+    "scriptFile": "ClaimsRules.Api.dll",
+    "entryPoint": "ClaimsRules.Api.Functions.RulesEngineFn.ValidateClaim",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Anonymous",
+        "methods": [
+          "post"
+        ],
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  }
+]

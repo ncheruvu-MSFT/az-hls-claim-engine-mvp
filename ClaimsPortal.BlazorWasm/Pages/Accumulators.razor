@@ -1,0 +1,960 @@
+@page "/accumulators"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject NaturalLanguageService NlService
+@inject HedisCalculationService HedisService
+
+<PageTitle>Member Search - ClaimsIQ Platform</PageTitle>
+
+<div class="accumulators-container">
+    <div class="page-header">
+        <h3>🔍 Member Search & Benefit Tracking</h3>
+        <p class="subtitle">HIPAA-compliant family and individual benefit tracking</p>
+    </div>
+
+    <!-- Family Selection -->
+    <div class="card member-selection-card">
+        <h3>👨‍👩‍👧‍👦 Select Family</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Subscriber ID</label>
+                <input type="text" @bind="subscriberId" placeholder="SUB001" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label>Plan ID</label>
+                <select @bind="planId" class="form-control">
+                    <option value="MA-H1234-001">Northridge Medicare Prime HMO</option>
+                    <option value="PLAN001">Gold PPO</option>
+                    <option value="PLAN002">Silver HMO</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn-primary" @onclick="LoadFamilyAccumulators" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span>🔄 Loading...</span>
+            }
+            else
+            {
+                <span>📊 Load Family</span>
+            }
+        </button>
+    </div>
+
+    @if (familyMembers.Any())
+    {
+        <!-- Main Tabs - Bootstrap Nav Tabs -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "family" ? "active" : "")" type="button" 
+                        @onclick='() => { activeTab = "family"; selectedMemberId = null; }'>
+                    <span class="tab-icon">👨‍👩‍👧‍👦</span> Family Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "medical" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "medical"'>
+                    <span class="tab-icon">🏥</span> Medical
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "dental" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "dental"'>
+                    <span class="tab-icon">🦷</span> Dental
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "pharmacy" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "pharmacy"'>
+                    <span class="tab-icon">💊</span> Pharmacy
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "vision" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "vision"'>
+                    <span class="tab-icon">👓</span> Vision
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "hedis" ? "active" : "")" type="button" 
+                        @onclick='() => activeTab = "hedis"'>
+                    <span class="tab-icon">⭐</span> Quality
+                </button>
+            </li>
+        </ul>
+
+        <!-- Family Overview Tab -->
+        @if (activeTab == "family" && selectedMemberId == null)
+        {
+            <div class="family-overview-container">
+                <!-- Family-Level Summary Table -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>👨‍👩‍👧‍👦 Family-Level Accumulators</h4>
+                        <span class="badge bg-primary">Calendar Year 2026</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="data-table family-accum-table">
+                                <thead>
+                                    <tr>
+                                        <th>Benefit Type</th>
+                                        <th class="text-end">Deductible Met</th>
+                                        <th class="text-end">Deductible Remaining</th>
+                                        <th class="text-end">OOP Met</th>
+                                        <th class="text-end">OOP Remaining</th>
+                                        <th style="width: 200px;">Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            <tr class="medical-row">
+                                <td><strong>Medical (Family)</strong></td>
+                                <td class="amount">@($"{familyDeductibleMet:N2}")</td>
+                                <td class="amount">@($"{familyDeductibleRemaining:N2}")</td>
+                                <td class="amount met">@($"{familyOopMet:N2}")</td>
+                                <td class="amount remaining">@($"{familyOopRemaining:N2}")</td>
+                                <td>
+                                    <div class="progress-cell">
+                                        <div class="progress-bar-small" style="width: @GetProgressPercentage(familyOopMet, familyOopMet + familyOopRemaining)%"></div>
+                                        <span class="progress-text">@GetProgressPercentage(familyOopMet, familyOopMet + familyOopRemaining).ToString("F0")%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="dental-row">
+                                <td><strong>Dental (Combined)</strong></td>
+                                <td colspan="2" class="centered">Per-member maximums apply</td>
+                                <td class="amount">@($"{familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed):N2}")</td>
+                                <td class="amount">@($"{(familyMembers.Sum(m => m.DentalAccum.AnnualMax) - familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed)):N2}")</td>
+                                <td>
+                                    <div class="progress-cell">
+                                        <div class="progress-bar-small dental" style="width: @GetProgressPercentage(familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed), 8000)%"></div>
+                                        <span class="progress-text">@GetProgressPercentage(familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed), 8000).ToString("F0")%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="pharmacy-row">
+                                <td><strong>Pharmacy (Combined)</strong></td>
+                                <td colspan="2" class="centered">Per-member deductibles</td>
+                                <td class="amount">@($"{familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet):N2}")</td>
+                                <td class="amount">@($"{(familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMax) - familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet)):N2}")</td>
+                                <td>
+                                    <div class="progress-cell">
+                                        <div class="progress-bar-small pharmacy" style="width: @GetProgressPercentage(familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet), 8000)%"></div>
+                                        <span class="progress-text">@GetProgressPercentage(familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet), 8000).ToString("F0")%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="total-row">
+                                <td><strong>COMBINED TOTAL</strong></td>
+                                <td colspan="2"></td>
+                                <td class="amount total">@($"{(familyOopMet + familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed) + familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet)):N2}")</td>
+                                <td class="amount total">@($"{(familyOopRemaining + (familyMembers.Sum(m => m.DentalAccum.AnnualMax) - familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed)) + (familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMax) - familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet))):N2}")</td>
+                                <td>
+                                    <div class="progress-cell">
+                                        <div class="progress-bar-small combined" style="width: @GetProgressPercentage((familyOopMet + familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed) + familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet)), 20000)%"></div>
+                                        <span class="progress-text">@GetProgressPercentage((familyOopMet + familyMembers.Sum(m => m.DentalAccum.AnnualMaxUsed) + familyMembers.Sum(m => m.PharmacyAccum.DrugOOPMet)), 20000).ToString("F0")%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Family Members List -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>👥 Family Members & Dependents</h4>
+                        <span class="badge bg-info">@familyMembers.Count members</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Member</th>
+                                        <th>Relationship</th>
+                                        <th>DOB / Age</th>
+                                        <th>Medical OOP</th>
+                                        <th>Dental</th>
+                                        <th>Pharmacy</th>
+                                        <th>Combined</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                            @foreach (var member in familyMembers.OrderBy(m => m.Relationship == "Subscriber" ? 0 : 1).ThenBy(m => m.DateOfBirth))
+                            {
+                                <tr class="@(member.Relationship == "Subscriber" ? "subscriber-row" : "dependent-row")">
+                                    <td>
+                                        <div class="member-info">
+                                            <span class="member-icon">@GetMemberIcon(member.Relationship)</span>
+                                            <div>
+                                                <div class="member-name">@member.FirstName @member.LastName</div>
+                                                <div class="member-id">ID: @member.MemberId</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="relationship-badge @member.Relationship.ToLower()">@member.Relationship</span>
+                                    </td>
+                                    <td>
+                                        <div class="dob-info">
+                                            <div>@member.DateOfBirth.ToString("MM/dd/yyyy")</div>
+                                            <div class="age-text">Age @member.Age</div>
+                                        </div>
+                                    </td>
+                                    <td class="amount">@($"{member.MedicalAccum.IndividualOopMet:N2}")</td>
+                                    <td class="amount">@($"{member.DentalAccum.AnnualMaxUsed:N2}")</td>
+                                    <td class="amount">@($"{member.PharmacyAccum.DrugOOPMet:N2}")</td>
+                                    <td class="amount total">@($"{(member.MedicalAccum.IndividualOopMet + member.DentalAccum.AnnualMaxUsed + member.PharmacyAccum.DrugOOPMet):N2}")</td>
+                                    <td>
+                                        <button class="btn-view" @onclick="() => ViewMemberDetails(member.MemberId)">
+                                            View Details →
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Individual Member Details -->
+        @if (selectedMemberId != null && activeTab != "hedis")
+        {
+            var member = familyMembers.FirstOrDefault(m => m.MemberId == selectedMemberId);
+            @if (member != null)
+            {
+                <div class="member-detail-header">
+                    <button class="btn-back" @onclick='() => { selectedMemberId = null; activeTab = "family"; }'>
+                        ← Back to Family Overview
+                    </button>
+                    <h2>@GetMemberIcon(member.Relationship) @member.FirstName @member.LastName</h2>
+                    <div class="member-meta">
+                        <span>ID: @member.MemberId</span> | 
+                        <span>@member.Relationship</span> | 
+                        <span>Age @member.Age</span>
+                    </div>
+                </div>
+
+                @if (activeTab == "medical")
+                {
+                    <div class="accumulator-card">
+                        <h3>🏥 Medical Benefits</h3>
+                        <div class="table-responsive">
+                            <table class="data-table detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Benefit</th>
+                                        <th>Limit</th>
+                                        <th>Met/Used</th>
+                                        <th>Remaining</th>
+                                        <th style="width: 200px;">Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Individual Deductible</strong></td>
+                                        <td>@($"{(member.MedicalAccum.IndividualDeductibleMet + member.MedicalAccum.IndividualDeductibleRemaining):N2}")</td>
+                                        <td class="amount met">@($"{member.MedicalAccum.IndividualDeductibleMet:N2}")</td>
+                                        <td class="amount remaining">@($"{member.MedicalAccum.IndividualDeductibleRemaining:N2}")</td>
+                                        <td>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar" style="width: @GetProgressPercentage(member.MedicalAccum.IndividualDeductibleMet, member.MedicalAccum.IndividualDeductibleMet + member.MedicalAccum.IndividualDeductibleRemaining)%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <tr>
+                                    <td><strong>Individual OOP Maximum</strong></td>
+                                    <td>@($"{(member.MedicalAccum.IndividualOopMet + member.MedicalAccum.IndividualOopRemaining):N2}")</td>
+                                    <td class="amount met">@($"{member.MedicalAccum.IndividualOopMet:N2}")</td>
+                                    <td class="amount remaining">@($"{member.MedicalAccum.IndividualOopRemaining:N2}")</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar progress-warning" style="width: @GetProgressPercentage(member.MedicalAccum.IndividualOopMet, member.MedicalAccum.IndividualOopMet + member.MedicalAccum.IndividualOopRemaining)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Office Visits</strong></td>
+                                    <td>@(member.MedicalAccum.OfficeVisitsUsed + member.MedicalAccum.OfficeVisitsRemaining) visits</td>
+                                    <td>@member.MedicalAccum.OfficeVisitsUsed used</td>
+                                    <td>@member.MedicalAccum.OfficeVisitsRemaining left</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar progress-info" style="width: @GetProgressPercentage(member.MedicalAccum.OfficeVisitsUsed, member.MedicalAccum.OfficeVisitsUsed + member.MedicalAccum.OfficeVisitsRemaining)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Hospital Days</strong></td>
+                                    <td>@(member.MedicalAccum.HospitalDaysUsed + member.MedicalAccum.HospitalDaysRemaining) days</td>
+                                    <td>@member.MedicalAccum.HospitalDaysUsed used</td>
+                                    <td>@member.MedicalAccum.HospitalDaysRemaining left</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar progress-success" style="width: @GetProgressPercentage(member.MedicalAccum.HospitalDaysUsed, member.MedicalAccum.HospitalDaysUsed + member.MedicalAccum.HospitalDaysRemaining)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "dental")
+                {
+                    <div class="accumulator-card">
+                        <h3>🦷 Dental Benefits</h3>
+                        <div class="table-responsive">
+                            <table class="data-table detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Benefit</th>
+                                        <th>Limit</th>
+                                        <th>Used</th>
+                                        <th>Remaining</th>
+                                        <th style="width: 200px;">Progress</th>
+                                    </tr>
+                                </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Annual Maximum</strong></td>
+                                    <td>@($"{member.DentalAccum.AnnualMax:N2}")</td>
+                                    <td class="amount met">@($"{member.DentalAccum.AnnualMaxUsed:N2}")</td>
+                                    <td class="amount remaining">@($"{member.DentalAccum.AnnualMaxRemaining:N2}")</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar dental" style="width: @GetProgressPercentage(member.DentalAccum.AnnualMaxUsed, member.DentalAccum.AnnualMax)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Preventive (100% covered)</td>
+                                    <td colspan="3" class="amount">@($"{member.DentalAccum.PreventiveSpend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Basic (80% covered)</td>
+                                    <td colspan="3" class="amount">@($"{member.DentalAccum.BasicSpend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Major (50% covered)</td>
+                                    <td colspan="3" class="amount">@($"{member.DentalAccum.MajorSpend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Cleanings</strong></td>
+                                    <td>2 per year</td>
+                                    <td>@member.DentalAccum.CleaningsThisYear used</td>
+                                    <td>@(2 - member.DentalAccum.CleaningsThisYear) left</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar dental" style="width: @(member.DentalAccum.CleaningsThisYear * 50)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Exams</strong></td>
+                                    <td>2 per year</td>
+                                    <td>@member.DentalAccum.ExamsThisYear used</td>
+                                    <td>@(2 - member.DentalAccum.ExamsThisYear) left</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar dental" style="width: @(member.DentalAccum.ExamsThisYear * 50)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "pharmacy")
+                {
+                    <div class="accumulator-card">
+                        <h3>💊 Pharmacy Benefits (Part D)</h3>
+                        <div class="table-responsive">
+                            <table class="data-table detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Benefit</th>
+                                        <th>Limit</th>
+                                        <th>Met/Used</th>
+                                        <th>Remaining</th>
+                                        <th style="width: 200px;">Progress</th>
+                                    </tr>
+                                </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Drug OOP Maximum</strong></td>
+                                    <td>@($"{member.PharmacyAccum.DrugOOPMax:N2}")</td>
+                                    <td class="amount met">@($"{member.PharmacyAccum.DrugOOPMet:N2}")</td>
+                                    <td class="amount remaining">@($"{member.PharmacyAccum.DrugOOPRemaining:N2}")</td>
+                                    <td>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar pharmacy" style="width: @GetProgressPercentage(member.PharmacyAccum.DrugOOPMet, member.PharmacyAccum.DrugOOPMax)%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="5" class="phase-status">
+                                        <strong>Coverage Phase:</strong> @member.PharmacyAccum.CoveragePhase | 
+                                        <strong>TrOOP:</strong> @($"{member.PharmacyAccum.TrueOutOfPocket:N2}")
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Tier 1 ($0)</td>
+                                    <td>@member.PharmacyAccum.Tier1RxCount Rx</td>
+                                    <td colspan="2" class="amount">@($"{member.PharmacyAccum.Tier1Spend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Tier 2 ($10)</td>
+                                    <td>@member.PharmacyAccum.Tier2RxCount Rx</td>
+                                    <td colspan="2" class="amount">@($"{member.PharmacyAccum.Tier2Spend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Tier 3 ($47)</td>
+                                    <td>@member.PharmacyAccum.Tier3RxCount Rx</td>
+                                    <td colspan="2" class="amount">@($"{member.PharmacyAccum.Tier3Spend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td><strong>Total Drug Spending</strong></td>
+                                    <td colspan="3" class="amount total">@($"{member.PharmacyAccum.TotalDrugSpend:N2}")</td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+                }
+
+                @if (activeTab == "vision")
+                {
+                    <div class="accumulator-card">
+                        <h3>👓 Vision Benefits</h3>
+                        <div class="table-responsive">
+                            <table class="data-table detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>Benefit</th>
+                                        <th>Limit</th>
+                                        <th>Used</th>
+                                        <th>Remaining</th>
+                                        <th style="width: 200px;">Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Annual Eye Exam</strong></td>
+                                        <td>1 per year</td>
+                                        <td>1 used</td>
+                                        <td>0 left</td>
+                                        <td>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar vision" style="width: 100%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Frames Allowance</strong></td>
+                                        <td>$150.00</td>
+                                        <td class="amount met">$150.00</td>
+                                        <td class="amount remaining">$0.00</td>
+                                        <td>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar vision" style="width: 100%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Contact Lenses</strong></td>
+                                        <td>$150.00</td>
+                                        <td class="amount met">$0.00</td>
+                                        <td class="amount remaining">$150.00</td>
+                                        <td>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar vision" style="width: 0%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Standard Lenses (Single Vision)</td>
+                                        <td colspan="3" class="amount">Covered in Full</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Progressive Lenses</td>
+                                        <td colspan="3" class="amount">$80 Copay</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Annual Vision Spend</strong></td>
+                                        <td>$300.00</td>
+                                        <td class="amount met">$150.00</td>
+                                        <td class="amount remaining">$150.00</td>
+                                        <td>
+                                            <div class="progress-bar-container">
+                                                <div class="progress-bar vision" style="width: 50%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            }
+        }
+
+        <!-- HEDIS Quality Tab -->
+        @if (activeTab == "hedis")
+        {
+            <div class="hedis-embedded-dashboard">
+                @if (hedisDashboard != null)
+                {
+                    <div class="hedis-summary-cards">
+                        <div class="hedis-summary-card">
+                            <div class="card-icon">✓</div>
+                            <div class="card-content">
+                                <div class="card-value">@hedisDashboard.OverallComplianceRate.ToString("F1")%</div>
+                                <div class="card-label">Overall Compliance</div>
+                            </div>
+                        </div>
+                        <div class="hedis-summary-card">
+                            <div class="card-icon">⭐</div>
+                            <div class="card-content">
+                                <div class="card-value">@hedisDashboard.StarRating.ToString("F1")</div>
+                                <div class="card-label">Star Rating</div>
+                            </div>
+                        </div>
+                        <div class="hedis-summary-card">
+                            <div class="card-icon">📊</div>
+                            <div class="card-content">
+                                <div class="card-value">@hedisDashboard.TotalMeasures</div>
+                                <div class="card-label">Total Measures</div>
+                            </div>
+                        </div>
+                        <div class="hedis-summary-card">
+                            <div class="card-icon">⚠️</div>
+                            <div class="card-content">
+                                <div class="card-value">@hedisDashboard.TotalGapsInCare</div>
+                                <div class="card-label">Gaps in Care</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="view-full-link">
+                        <a href="/hedis-quality">View Full HEDIS Dashboard →</a>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Natural Language Assistant -->
+        <div class="nl-assistant">
+            <h3>💬 Ask About Benefits</h3>
+            <textarea @bind="nlQuestion" placeholder="e.g., 'How much has my family spent on medical care?' or 'Who has reached their dental limit?'" rows="3"></textarea>
+            <button class="btn-ask" @onclick="AskQuestion">Ask AI Assistant</button>
+            
+            @if (!string.IsNullOrWhiteSpace(nlAnswer))
+            {
+                <div class="nl-answer">
+                    <strong>AI Assistant:</strong>
+                    <p>@nlAnswer</p>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string subscriberId = "SUB001";
+    private string planId = "MA-H1234-001";
+    private string activeTab = "family";
+    private bool isLoading = false;
+    private List<FamilyMember> familyMembers = new();
+    private string? selectedMemberId = null;
+    private HedisDashboard? hedisDashboard;
+    
+    // Family-level accumulators
+    private decimal familyDeductibleMet = 850m;
+    private decimal familyDeductibleRemaining = 1150m;
+    private decimal familyOopMet = 2400m;
+    private decimal familyOopRemaining = 7600m;
+    
+    private string nlQuestion = string.Empty;
+    private string nlAnswer = string.Empty;
+
+    private async Task LoadFamilyAccumulators()
+    {
+        isLoading = true;
+        try
+        {
+            await Task.Delay(500);
+
+            // Load family members with sample data
+            familyMembers = new List<FamilyMember>
+            {
+                new FamilyMember
+                {
+                    MemberId = "SUB001",
+                    FirstName = "John",
+                    LastName = "Smith",
+                    DateOfBirth = new DateTime(1975, 5, 15),
+                    Relationship = "Subscriber",
+                    MedicalAccum = new MemberAccumulator
+                    {
+                        MemberId = "SUB001",
+                        PlanId = planId,
+                        IndividualDeductibleMet = 300m,
+                        IndividualDeductibleRemaining = 700m,
+                        IndividualOopMet = 1200m,
+                        IndividualOopRemaining = 3800m,
+                        FamilyDeductibleMet = 850m,
+                        FamilyDeductibleRemaining = 1150m,
+                        FamilyOopMet = 2400m,
+                        FamilyOopRemaining = 7600m,
+                        OfficeVisitsUsed = 3,
+                        OfficeVisitsRemaining = 17,
+                        HospitalDaysUsed = 0,
+                        HospitalDaysRemaining = 60,
+                        PrescriptionSpend = 450m,
+                        EnrollmentStartDate = new DateTime(2026, 1, 1),
+                        EnrollmentEndDate = new DateTime(2026, 12, 31),
+                        AccumulatorPeriod = "Calendar Year 2026",
+                        LastClaimDate = DateTime.Today.AddDays(-5),
+                        LastUpdated = DateTime.UtcNow,
+                        DaysInPeriod = 365,
+                        DaysRemaining = (new DateTime(2026, 12, 31) - DateTime.Today).Days
+                    },
+                    DentalAccum = new DentalAccumulator
+                    {
+                        MemberId = "SUB001",
+                        PlanId = planId,
+                        Year = 2026,
+                        AnnualMax = 2000m,
+                        AnnualMaxUsed = 450m,
+                        Deductible = 50m,
+                        DeductibleMet = 50m,
+                        PreventiveSpend = 200m,
+                        BasicSpend = 150m,
+                        MajorSpend = 100m,
+                        OrthodontiaSpend = 0m,
+                        CleaningsThisYear = 2,
+                        ExamsThisYear = 1,
+                        BitewingXRaysThisYear = 1
+                    },
+                    PharmacyAccum = new PharmacyAccumulator
+                    {
+                        MemberId = "SUB001",
+                        PlanId = planId,
+                        Year = 2026,
+                        DrugDeductible = 0m,
+                        DrugDeductibleMet = 0m,
+                        DrugOOPMax = 2000m,
+                        DrugOOPMet = 180m,
+                        TrueOutOfPocket = 180m,
+                        CoveragePhase = "Initial",
+                        TotalDrugSpend = 850m,
+                        Tier1RxCount = 6,
+                        Tier1Spend = 0m,
+                        Tier2RxCount = 3,
+                        Tier2Spend = 30m,
+                        Tier3RxCount = 2,
+                        Tier3Spend = 94m,
+                        Tier4RxCount = 0,
+                        Tier4Spend = 0m,
+                        Tier5RxCount = 1,
+                        Tier5Spend = 56m
+                    }
+                },
+                new FamilyMember
+                {
+                    MemberId = "DEP001",
+                    FirstName = "Sarah",
+                    LastName = "Smith",
+                    DateOfBirth = new DateTime(1978, 8, 22),
+                    Relationship = "Spouse",
+                    MedicalAccum = new MemberAccumulator
+                    {
+                        MemberId = "DEP001",
+                        PlanId = planId,
+                        IndividualDeductibleMet = 250m,
+                        IndividualDeductibleRemaining = 750m,
+                        IndividualOopMet = 800m,
+                        IndividualOopRemaining = 4200m,
+                        FamilyDeductibleMet = 850m,
+                        FamilyDeductibleRemaining = 1150m,
+                        FamilyOopMet = 2400m,
+                        FamilyOopRemaining = 7600m,
+                        OfficeVisitsUsed = 2,
+                        OfficeVisitsRemaining = 18,
+                        HospitalDaysUsed = 0,
+                        HospitalDaysRemaining = 60,
+                        PrescriptionSpend = 320m,
+                        EnrollmentStartDate = new DateTime(2026, 1, 1),
+                        EnrollmentEndDate = new DateTime(2026, 12, 31),
+                        AccumulatorPeriod = "Calendar Year 2026",
+                        LastClaimDate = DateTime.Today.AddDays(-3),
+                        LastUpdated = DateTime.UtcNow,
+                        DaysInPeriod = 365,
+                        DaysRemaining = (new DateTime(2026, 12, 31) - DateTime.Today).Days
+                    },
+                    DentalAccum = new DentalAccumulator
+                    {
+                        MemberId = "DEP001",
+                        PlanId = planId,
+                        Year = 2026,
+                        AnnualMax = 2000m,
+                        AnnualMaxUsed = 325m,
+                        Deductible = 50m,
+                        DeductibleMet = 50m,
+                        PreventiveSpend = 175m,
+                        BasicSpend = 150m,
+                        MajorSpend = 0m,
+                        OrthodontiaSpend = 0m,
+                        CleaningsThisYear = 1,
+                        ExamsThisYear = 1,
+                        BitewingXRaysThisYear = 0
+                    },
+                    PharmacyAccum = new PharmacyAccumulator
+                    {
+                        MemberId = "DEP001",
+                        PlanId = planId,
+                        Year = 2026,
+                        DrugDeductible = 0m,
+                        DrugDeductibleMet = 0m,
+                        DrugOOPMax = 2000m,
+                        DrugOOPMet = 120m,
+                        TrueOutOfPocket = 120m,
+                        CoveragePhase = "Initial",
+                        TotalDrugSpend = 620m,
+                        Tier1RxCount = 4,
+                        Tier1Spend = 0m,
+                        Tier2RxCount = 2,
+                        Tier2Spend = 20m,
+                        Tier3RxCount = 3,
+                        Tier3Spend = 141m,
+                        Tier4RxCount = 0,
+                        Tier4Spend = 0m,
+                        Tier5RxCount = 0,
+                        Tier5Spend = 0m
+                    }
+                },
+                new FamilyMember
+                {
+                    MemberId = "DEP002",
+                    FirstName = "Emily",
+                    LastName = "Smith",
+                    DateOfBirth = new DateTime(2008, 3, 10),
+                    Relationship = "Child",
+                    MedicalAccum = new MemberAccumulator
+                    {
+                        MemberId = "DEP002",
+                        PlanId = planId,
+                        IndividualDeductibleMet = 150m,
+                        IndividualDeductibleRemaining = 850m,
+                        IndividualOopMet = 300m,
+                        IndividualOopRemaining = 4700m,
+                        FamilyDeductibleMet = 850m,
+                        FamilyDeductibleRemaining = 1150m,
+                        FamilyOopMet = 2400m,
+                        FamilyOopRemaining = 7600m,
+                        OfficeVisitsUsed = 1,
+                        OfficeVisitsRemaining = 19,
+                        HospitalDaysUsed = 0,
+                        HospitalDaysRemaining = 60,
+                        PrescriptionSpend = 90m,
+                        EnrollmentStartDate = new DateTime(2026, 1, 1),
+                        EnrollmentEndDate = new DateTime(2026, 12, 31),
+                        AccumulatorPeriod = "Calendar Year 2026",
+                        LastClaimDate = DateTime.Today.AddDays(-10),
+                        LastUpdated = DateTime.UtcNow,
+                        DaysInPeriod = 365,
+                        DaysRemaining = (new DateTime(2026, 12, 31) - DateTime.Today).Days
+                    },
+                    DentalAccum = new DentalAccumulator
+                    {
+                        MemberId = "DEP002",
+                        PlanId = planId,
+                        Year = 2026,
+                        AnnualMax = 2000m,
+                        AnnualMaxUsed = 225m,
+                        Deductible = 50m,
+                        DeductibleMet = 50m,
+                        PreventiveSpend = 150m,
+                        BasicSpend = 75m,
+                        MajorSpend = 0m,
+                        OrthodontiaSpend = 0m,
+                        CleaningsThisYear = 1,
+                        ExamsThisYear = 1,
+                        BitewingXRaysThisYear = 1
+                    },
+                    PharmacyAccum = new PharmacyAccumulator
+                    {
+                        MemberId = "DEP002",
+                        PlanId = planId,
+                        Year = 2026,
+                        DrugDeductible = 0m,
+                        DrugDeductibleMet = 0m,
+                        DrugOOPMax = 2000m,
+                        DrugOOPMet = 45m,
+                        TrueOutOfPocket = 45m,
+                        CoveragePhase = "Initial",
+                        TotalDrugSpend = 220m,
+                        Tier1RxCount = 2,
+                        Tier1Spend = 0m,
+                        Tier2RxCount = 1,
+                        Tier2Spend = 10m,
+                        Tier3RxCount = 1,
+                        Tier3Spend = 47m,
+                        Tier4RxCount = 0,
+                        Tier4Spend = 0m,
+                        Tier5RxCount = 0,
+                        Tier5Spend = 0m
+                    }
+                },
+                new FamilyMember
+                {
+                    MemberId = "DEP003",
+                    FirstName = "Michael",
+                    LastName = "Smith",
+                    DateOfBirth = new DateTime(2012, 11, 5),
+                    Relationship = "Child",
+                    MedicalAccum = new MemberAccumulator
+                    {
+                        MemberId = "DEP003",
+                        PlanId = planId,
+                        IndividualDeductibleMet = 150m,
+                        IndividualDeductibleRemaining = 850m,
+                        IndividualOopMet = 100m,
+                        IndividualOopRemaining = 4900m,
+                        FamilyDeductibleMet = 850m,
+                        FamilyDeductibleRemaining = 1150m,
+                        FamilyOopMet = 2400m,
+                        FamilyOopRemaining = 7600m,
+                        OfficeVisitsUsed = 1,
+                        OfficeVisitsRemaining = 19,
+                        HospitalDaysUsed = 0,
+                        HospitalDaysRemaining = 60,
+                        PrescriptionSpend = 60m,
+                        EnrollmentStartDate = new DateTime(2026, 1, 1),
+                        EnrollmentEndDate = new DateTime(2026, 12, 31),
+                        AccumulatorPeriod = "Calendar Year 2026",
+                        LastClaimDate = DateTime.Today.AddDays(-15),
+                        LastUpdated = DateTime.UtcNow,
+                        DaysInPeriod = 365,
+                        DaysRemaining = (new DateTime(2026, 12, 31) - DateTime.Today).Days
+                    },
+                    DentalAccum = new DentalAccumulator
+                    {
+                        MemberId = "DEP003",
+                        PlanId = planId,
+                        Year = 2026,
+                        AnnualMax = 2000m,
+                        AnnualMaxUsed = 175m,
+                        Deductible = 50m,
+                        DeductibleMet = 50m,
+                        PreventiveSpend = 125m,
+                        BasicSpend = 50m,
+                        MajorSpend = 0m,
+                        OrthodontiaSpend = 0m,
+                        CleaningsThisYear = 1,
+                        ExamsThisYear = 1,
+                        BitewingXRaysThisYear = 0
+                    },
+                    PharmacyAccum = new PharmacyAccumulator
+                    {
+                        MemberId = "DEP003",
+                        PlanId = planId,
+                        Year = 2026,
+                        DrugDeductible = 0m,
+                        DrugDeductibleMet = 0m,
+                        DrugOOPMax = 2000m,
+                        DrugOOPMet = 30m,
+                        TrueOutOfPocket = 30m,
+                        CoveragePhase = "Initial",
+                        TotalDrugSpend = 180m,
+                        Tier1RxCount = 1,
+                        Tier1Spend = 0m,
+                        Tier2RxCount = 1,
+                        Tier2Spend = 10m,
+                        Tier3RxCount = 1,
+                        Tier3Spend = 47m,
+                        Tier4RxCount = 0,
+                        Tier4Spend = 0m,
+                        Tier5RxCount = 0,
+                        Tier5Spend = 0m
+                    }
+                }
+            };
+
+            // Load HEDIS dashboard
+            hedisDashboard = await HedisService.GetHedisDashboard();
+
+            // Default to family view
+            activeTab = "family";
+            selectedMemberId = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewMemberDetails(string memberId)
+    {
+        selectedMemberId = memberId;
+        activeTab = "medical"; // Default to medical tab when viewing member
+    }
+
+    private async Task AskQuestion()
+    {
+        if (string.IsNullOrWhiteSpace(nlQuestion)) return;
+        
+        nlAnswer = await NlService.GetAnswerAsync(nlQuestion);
+    }
+
+    private decimal GetProgressPercentage(decimal met, decimal total)
+    {
+        if (total == 0) return 0;
+        return Math.Min((met / total) * 100, 100);
+    }
+
+    private string GetMemberIcon(string relationship)
+    {
+        return relationship switch
+        {
+            "Subscriber" => "👨",
+            "Spouse" => "👩",
+            "Child" => "👧",
+            _ => "👤"
+        };
+    }
+
+    // Helper class
+    private class FamilyMember
+    {
+        public string MemberId { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public DateTime DateOfBirth { get; set; }
+        public int Age => DateTime.Today.Year - DateOfBirth.Year - (DateTime.Today.DayOfYear < DateOfBirth.DayOfYear ? 1 : 0);
+        public string Relationship { get; set; } = string.Empty;
+        public MemberAccumulator MedicalAccum { get; set; } = new();
+        public DentalAccumulator DentalAccum { get; set; } = new();
+        public PharmacyAccumulator PharmacyAccum { get; set; } = new();
+    }
+}

@@ -1,0 +1,384 @@
+@page "/hedis-quality"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject HedisCalculationService HedisService
+
+<PageTitle>Quality Measures - ClaimsIQ Platform</PageTitle>
+
+<div class="hedis-quality-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">
+                <span class="icon">📊</span>
+                HEDIS Quality Measures
+            </h1>
+            <p class="page-subtitle">Healthcare Effectiveness Data and Information Set (HEDIS) - NCQA Quality Performance</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" @onclick="RefreshData">
+                <span class="icon">🔄</span> Refresh
+            </button>
+            <button class="btn btn-secondary">
+                <span class="icon">📥</span> Export Report
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading HEDIS quality measures...</p>
+        </div>
+    }
+    else if (dashboard != null)
+    {
+        <!-- Dashboard Summary Cards -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="display-1 mb-2">🎯</div>
+                        <h6 class="card-subtitle text-muted mb-2">Overall Compliance</h6>
+                        <h3 class="card-title">@dashboard.OverallComplianceRate.ToString("F1")%</h3>
+                        <div class="text-success">↑ 2.3% YoY</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="display-1 mb-2">⭐</div>
+                        <h6 class="card-subtitle text-muted mb-2">CMS Star Rating</h6>
+                        <h3 class="card-title">@dashboard.StarRating.ToString("F1")</h3>
+                        <div class="@GetTrendClass(dashboard.StarRatingTrend)">
+                            @GetTrendIcon(dashboard.StarRatingTrend) @dashboard.StarRatingTrend
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="display-1 mb-2">📋</div>
+                        <h6 class="card-subtitle text-muted mb-2">Total Measures</h6>
+                        <h3 class="card-title">@dashboard.TotalMeasures</h3>
+                        <small class="text-muted">@dashboard.TotalMembers.ToString("N0") members</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="display-1 mb-2">⚠️</div>
+                        <h6 class="card-subtitle text-muted mb-2">Gaps in Care</h6>
+                        <h3 class="card-title">@dashboard.TotalGapsInCare.ToString("N0")</h3>
+                        <small class="text-muted">Opportunities for improvement</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="category-tabs">
+            <button class="tab-button @(selectedCategory == "All" ? "active" : "")" 
+                    @onclick='() => selectedCategory = "All"'>
+                All Measures (@dashboard.Categories.Sum(c => c.MeasureCount))
+            </button>
+            @foreach (var category in dashboard.Categories)
+            {
+                <button class="tab-button @(selectedCategory == category.Category ? "active" : "")"
+                        @onclick="() => selectedCategory = category.Category">
+                    @category.Category (@category.MeasureCount)
+                </button>
+            }
+        </div>
+
+        <!-- Measures Grid -->
+        <div class="measures-section">
+            <div class="section-header">
+                <h2>@(selectedCategory == "All" ? "All HEDIS Measures" : selectedCategory)</h2>
+                <div class="filter-controls">
+                    <select class="filter-select" @onchange="HandlePerformanceFilter">
+                        <option value="All">All Performance Levels</option>
+                        <option value="Excellent">Excellent</option>
+                        <option value="Above Average">Above Average</option>
+                        <option value="Average">Average</option>
+                        <option value="Below Average">Below Average</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="measures-grid">
+                @foreach (var measure in GetFilteredMeasures())
+                {
+                    <div class="measure-card @GetPerformanceClass(measure.PerformanceLevel)">
+                        <div class="measure-header">
+                            <div class="measure-title-section">
+                                <h3 class="measure-id">@measure.MeasureId</h3>
+                                <div class="measure-name">@measure.MeasureName</div>
+                                <div class="measure-category-badge">@measure.Category</div>
+                            </div>
+                            <div class="measure-score-section">
+                                <div class="score-circle @GetScoreClass(measure.ComplianceRate)">
+                                    <span class="score-value">@measure.ComplianceRate.ToString("F1")%</span>
+                                </div>
+                                <div class="performance-badge @GetPerformanceClass(measure.PerformanceLevel)">
+                                    @measure.PerformanceLevel
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="measure-description">
+                            @measure.MeasureDescription
+                        </div>
+
+                        <div class="measure-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Numerator</div>
+                                <div class="stat-value">@measure.Numerator.ToString("N0")</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Denominator</div>
+                                <div class="stat-value">@measure.Denominator.ToString("N0")</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Gaps</div>
+                                <div class="stat-value gap-highlight">@measure.GapsInCare.ToString("N0")</div>
+                            </div>
+                        </div>
+
+                        <!-- Benchmark Comparison -->
+                        <div class="benchmark-section">
+                            <div class="benchmark-label">Benchmarks</div>
+                            <div class="benchmark-bars">
+                                <div class="benchmark-bar">
+                                    <div class="benchmark-marker" style="left: @(measure.ComplianceRate)%">
+                                        <span class="marker-label">You</span>
+                                    </div>
+                                    @if (measure.NationalAverage.HasValue)
+                                    {
+                                        <div class="benchmark-marker national" style="left: @(measure.NationalAverage.Value)%">
+                                            <span class="marker-label">Nat'l</span>
+                                        </div>
+                                    }
+                                    @if (measure.NcqaTarget90thPercentile.HasValue)
+                                    {
+                                        <div class="benchmark-marker ncqa" style="left: @(measure.NcqaTarget90thPercentile.Value)%">
+                                            <span class="marker-label">90th</span>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="benchmark-legend">
+                                    <span class="legend-item">
+                                        <span class="legend-marker you"></span> Your Plan: @measure.ComplianceRate.ToString("F1")%
+                                    </span>
+                                    @if (measure.NationalAverage.HasValue)
+                                    {
+                                        <span class="legend-item">
+                                            <span class="legend-marker national"></span> National: @measure.NationalAverage.Value.ToString("F1")%
+                                        </span>
+                                    }
+                                    @if (measure.NcqaTarget90thPercentile.HasValue)
+                                    {
+                                        <span class="legend-item">
+                                            <span class="legend-marker ncqa"></span> NCQA 90th: @measure.NcqaTarget90thPercentile.Value.ToString("F1")%
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Year-over-Year Trend -->
+                        @if (measure.PriorYearRate.HasValue && measure.YearOverYearChange.HasValue)
+                        {
+                            <div class="trend-section">
+                                <div class="trend-label">Year-over-Year</div>
+                                <div class="trend-comparison">
+                                    <span class="prior-year">@measure.PriorYearRate.Value.ToString("F1")% (2024)</span>
+                                    <span class="trend-arrow @GetTrendClass(measure.YearOverYearChange.Value > 0 ? "Improving" : "Declining")">
+                                        @(measure.YearOverYearChange.Value > 0 ? "↑" : "↓")
+                                    </span>
+                                    <span class="current-year">@measure.ComplianceRate.ToString("F1")% (2025)</span>
+                                    <span class="trend-change @(measure.YearOverYearChange.Value > 0 ? "positive" : "negative")">
+                                        @(measure.YearOverYearChange.Value > 0 ? "+" : "")@measure.YearOverYearChange.Value.ToString("F2")%
+                                    </span>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="measure-actions">
+                            <button class="btn-link" @onclick="() => ShowGapsForMeasure(measure.MeasureId)">
+                                View Gaps (@measure.GapsInCare)
+                            </button>
+                            <button class="btn-link">View Details</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Gaps in Care Section -->
+        @if (!string.IsNullOrEmpty(selectedMeasureForGaps))
+        {
+            var measure = GetFilteredMeasures().FirstOrDefault(m => m.MeasureId == selectedMeasureForGaps);
+            if (measure != null)
+            {
+                <div class="gaps-overlay" @onclick="CloseGapsModal">
+                    <div class="gaps-modal" @onclick:stopPropagation="true">
+                        <div class="modal-header">
+                            <h2>Gaps in Care - @measure.MeasureId</h2>
+                            <button class="close-button" @onclick="CloseGapsModal">×</button>
+                        </div>
+                        <div class="modal-content">
+                            <div class="gaps-summary">
+                                <p><strong>@measure.MeasureName</strong></p>
+                                <p>@measure.GapsInCare members need to complete this measure</p>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Member</th>
+                                            <th>Provider</th>
+                                            <th>Due Date</th>
+                                            <th>Priority</th>
+                                            <th>Recommended Action</th>
+                                            <th>Last Contact</th>
+                                            <th>Outreach</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var gap in measure.GapDetails.Take(10))
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="member-info">
+                                                        <div class="member-name">@gap.MemberName</div>
+                                                        <div class="member-id">@gap.MemberId</div>
+                                                    </div>
+                                                </td>
+                                                <td>@gap.ProviderName</td>
+                                                <td>
+                                                    <div class="due-date @(gap.DaysOverdue > 0 ? "overdue" : "")">
+                                                        @gap.DueDate.ToString("MM/dd/yyyy")
+                                                        @if (gap.DaysOverdue > 0)
+                                                        {
+                                                            <div class="overdue-badge">@gap.DaysOverdue days overdue</div>
+                                                        }
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="priority-badge @gap.Priority.ToLower()">@gap.Priority</span>
+                                                </td>
+                                                <td>@gap.RecommendedAction</td>
+                                                <td>
+                                                    @if (gap.LastContactDate.HasValue)
+                                                    {
+                                                        <span>@gap.LastContactDate.Value.ToString("MM/dd/yyyy")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="no-contact">No contact</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (gap.OutreachAttempts.Any())
+                                                    {
+                                                        <div class="outreach-count">@gap.OutreachAttempts.Count attempts</div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="no-outreach">None</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+@code {
+    private HedisDashboard? dashboard;
+    private bool isLoading = true;
+    private string selectedCategory = "All";
+    private string selectedPerformanceLevel = "All";
+    private string selectedMeasureForGaps = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        dashboard = await HedisService.GetHedisDashboard();
+        
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private List<HedisMeasure> GetFilteredMeasures()
+    {
+        if (dashboard == null) return new List<HedisMeasure>();
+
+        var measures = selectedCategory == "All" 
+            ? dashboard.Categories.SelectMany(c => c.Measures).ToList()
+            : dashboard.Categories.FirstOrDefault(c => c.Category == selectedCategory)?.Measures ?? new List<HedisMeasure>();
+
+        if (selectedPerformanceLevel != "All")
+        {
+            measures = measures.Where(m => m.PerformanceLevel == selectedPerformanceLevel).ToList();
+        }
+
+        return measures;
+    }
+
+    private void HandlePerformanceFilter(ChangeEventArgs e)
+    {
+        selectedPerformanceLevel = e.Value?.ToString() ?? "All";
+    }
+
+    private void ShowGapsForMeasure(string measureId)
+    {
+        selectedMeasureForGaps = measureId;
+    }
+
+    private void CloseGapsModal()
+    {
+        selectedMeasureForGaps = string.Empty;
+    }
+
+    private string GetPerformanceClass(string level) => level.ToLower().Replace(" ", "-");
+
+    private string GetScoreClass(decimal score) => score switch
+    {
+        >= 85 => "excellent",
+        >= 75 => "good",
+        >= 65 => "average",
+        _ => "below-average"
+    };
+
+    private string GetTrendClass(string trend) => trend.ToLower();
+
+    private string GetTrendIcon(string trend) => trend switch
+    {
+        "Improving" => "↑",
+        "Declining" => "↓",
+        _ => "→"
+    };
+}

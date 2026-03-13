@@ -1,0 +1,316 @@
+<mxfile host="65bd71144e">
+    <diagram id="page-1" name="Azure Claims Rules Platform Architecture">
+        <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1600" background="#16213e" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+
+                <!-- CANVAS BACKGROUND -->
+                <mxCell id="bg-full" value="" style="rounded=1;whiteSpace=wrap;fillColor=#1a1a2e;strokeColor=#2a2a4a;arcSize=4;shadow=0;opacity=100;" vertex="1" parent="1">
+                    <mxGeometry x="20" y="5" width="1860" height="1560" as="geometry"/>
+                </mxCell>
+
+                <!-- SECTION BACKGROUNDS -->
+                <mxCell id="bg-app-tier" value="" style="rounded=1;whiteSpace=wrap;fillColor=#0d1b3e;strokeColor=#1565C0;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="80" width="1820" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-app-label" value="APPLICATION TIER — Blazor WebAssembly Portal (.NET 10)" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#4488CC;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="82" width="340" height="20" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="bg-svc-layer" value="" style="rounded=1;whiteSpace=wrap;fillColor=#1a0d2e;strokeColor=#7B1FA2;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="360" width="1820" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-svc-label" value="SERVICE LAYER — Azure Functions (.NET 8 Isolated)" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#BB88DD;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="362" width="330" height="20" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="bg-azure" value="" style="rounded=1;whiteSpace=wrap;fillColor=#0d1a2e;strokeColor=#283593;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="680" width="1820" height="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-azure-label" value="AZURE PLATFORM SERVICES" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#6688BB;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="682" width="200" height="20" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="bg-analytics" value="" style="rounded=1;whiteSpace=wrap;fillColor=#2e0d1a;strokeColor=#C62828;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="980" width="1820" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-analytics-label" value="ANALYTICS &amp; REPORTING (OPTIONAL)" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#DD8888;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="982" width="250" height="20" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="bg-governance" value="" style="rounded=1;whiteSpace=wrap;fillColor=#0d2e1a;strokeColor=#2E7D32;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1200" width="1820" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-gov-label" value="GOVERNANCE, SECURITY &amp; COMPLIANCE" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#66BB88;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="1202" width="270" height="20" as="geometry"/>
+                </mxCell>
+
+                <mxCell id="bg-pipeline" value="" style="rounded=1;whiteSpace=wrap;fillColor=#1a0d3e;strokeColor=#6644AA;arcSize=6;opacity=70;strokeWidth=2;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="1410" width="1820" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="bg-pipeline-label" value="CI/CD PIPELINE — GitHub Actions + OIDC" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=10;fontColor=#AA88DD;spacingLeft=8;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="1412" width="290" height="20" as="geometry"/>
+                </mxCell>
+
+                <!-- TITLE -->
+                <mxCell id="title" value="🏥 Azure Healthcare Claims Intelligence Platform — Full Bundle Architecture" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=20;fontColor=#FFFFFF;" vertex="1" parent="1">
+                    <mxGeometry x="300" y="15" width="1300" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" value="March 2026  |  .NET 8 + .NET 10  |  FHIR R4  |  HIPAA Compliant  |  Blue = Data  |  Green = Auth  |  Purple = AI/Fraud  |  Red = Events" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontColor=#88AADD;" vertex="1" parent="1">
+                    <mxGeometry x="300" y="50" width="1300" height="24" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== APPLICATION TIER ========== -->
+                <mxCell id="ui-claims-mgmt" value="📋 Claims Management&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Medical / Dental / Pharmacy&lt;br&gt;Multi-Benefit Tabs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="120" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-claims-engine" value="⚙️ Claims Engine&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;4-Step Adjudication&lt;br&gt;Real-Time Validation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="270" y="120" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-eligibility" value="✅ Eligibility&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;HIPAA 270/271&lt;br&gt;Coverage Verification&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="470" y="120" width="170" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-benefits" value="💊 Benefits &amp; Accumulators&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Deductible / OOP / Copay&lt;br&gt;Multi-Benefit Tracking&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="660" y="120" width="190" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-formulary" value="💉 Formulary Management&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Drug Tiers / NDC Lookup&lt;br&gt;External Feed Import&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="870" y="120" width="190" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-fraud" value="🔍 Fraud Detection&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Risk Dashboard&lt;br&gt;Geographic Anomaly&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1080" y="120" width="170" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-hedis" value="📊 HEDIS Quality&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;13 Measures / 6 Domains&lt;br&gt;Gaps in Care&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1270" y="120" width="170" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-mdm" value="👤 MDM Portal&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Patient Deduplication&lt;br&gt;Golden Record&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1460" y="120" width="170" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-actuarial" value="📈 Actuarial Estimator&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;HCC Risk Scoring&lt;br&gt;Population Analytics&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1650" y="120" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-member" value="🧑 Member Portal&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Self-Service Claims&lt;br&gt;EOB / Accumulator View&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="210" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-sdoh" value="🌍 SDOH Profiling&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Social Determinants&lt;br&gt;Risk Assessment&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="270" y="210" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-nlp" value="🤖 AI Natural Language Assistant&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Context-Aware Help&lt;br&gt;Cross-Platform Queries&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="470" y="210" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-eob" value="📄 EOB Generator&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Explanation of Benefits&lt;br&gt;PDF / HTML Output&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="710" y="210" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-swa-badge" value="📦 Azure Static Web App (Free Tier)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#2E7D32;fontSize=10;fontColor=#66BB88;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="1200" y="230" width="250" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-otel-badge" value="🔭 OpenTelemetry Distributed Tracing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#2E7D32;fontSize=10;fontColor=#66BB88;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="1470" y="230" width="250" height="30" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== SERVICE LAYER ========== -->
+                <!-- Claims Processing Functions -->
+                <mxCell id="fn-rules" value="⚙️ RulesEngineFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;4-Step Validation&lt;br&gt;Coverage → Network → Eligibility → Financial&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="400" width="250" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-benefits" value="💊 BenefitsFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Plan Lookup / Eligibility Check&lt;br&gt;HIPAA 270/271 Verification&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="340" y="400" width="240" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-csv" value="📥 CsvIngestFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;CSV/EDI → FHIR Claim&lt;br&gt;Batch Processing&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="400" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-edi" value="📜 EdiIngestFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;EDI 837 Format&lt;br&gt;Claim Processing&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="820" y="400" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-eob" value="📄 EOBFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Explanation of Benefits&lt;br&gt;Document Generation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1020" y="400" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-provider" value="🏥 ProviderNetworkFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Network Validation&lt;br&gt;In/Out-of-Network Check&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1220" y="400" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-audit" value="📝 AuditFn&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Immutable Audit Trail&lt;br&gt;Compliance Logging&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1440" y="400" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-hedis" value="📊 HedisFunctions&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Quality Measure Calcs&lt;br&gt;13 Measures / 6 Domains&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1640" y="400" width="190" height="70" as="geometry"/>
+                </mxCell>
+
+                <!-- Services Row -->
+                <mxCell id="svc-fhir" value="🔗 FhirClient&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;AHDS FHIR R4 REST&lt;br&gt;Azure AD OAuth 2.0&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="500" width="190" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-cosmos" value="💾 CosmosAudit&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Audit Persistence&lt;br&gt;Serverless Mode&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="280" y="500" width="180" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-payment" value="💰 PaymentCalculator&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Line-Item Financials&lt;br&gt;Deductible → Coinsurance → Copay&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="500" width="230" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-risk" value="🔍 RiskScoringEngine&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Fraud Score 0-100&lt;br&gt;Impossible Travel / Duplicates&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#BB88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="730" y="500" width="220" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-mdm" value="👤 MdmMatchingService&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Patient Deduplication&lt;br&gt;SSN/MRN/Phonetic Match&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="970" y="500" width="220" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-hedis" value="📊 HedisService&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Measure Calculations&lt;br&gt;Gaps-in-Care Scoring&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1210" y="500" width="190" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-provider-net" value="🏥 ProviderNetworkSvc&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Network Lookups&lt;br&gt;Fee Schedule&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#6688BB;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1420" y="500" width="190" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc-event" value="📡 EventPublisher&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Event Grid Topics&lt;br&gt;Claims Pipeline Events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1630" y="500" width="200" height="65" as="geometry"/>
+                </mxCell>
+
+                <!-- Functions App Badge -->
+                <mxCell id="fn-badge" value="⚡ Azure Functions — Consumption Y1 (FREE: 1M req/month)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#2E7D32;fontSize=10;fontColor=#66BB88;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="590" width="380" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="fn-mock-badge" value="🔀 USE_MOCK_SERVICES toggle for local dev" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0d3e;strokeColor=#6644AA;fontSize=10;fontColor=#AA88DD;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="470" y="590" width="280" height="30" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== AZURE PLATFORM SERVICES ========== -->
+                <mxCell id="az-fhir" value="🏥 Azure Health Data Services&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;FHIR R4 (westus2)&lt;br&gt;Claim / Coverage / ClaimResponse&lt;br&gt;Patient / Encounter&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="720" width="260" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-cosmos" value="💾 Cosmos DB&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Serverless + FREE Tier&lt;br&gt;Analytical Storage (TTL)&lt;br&gt;Audit Trail / Claims Data&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="360" y="720" width="240" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-storage" value="📦 Azure Storage (ADLS Gen2)&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Standard_LRS&lt;br&gt;FHIR Exports / CSV Uploads&lt;br&gt;Analytics Data Lake&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="630" y="720" width="250" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-eventgrid" value="📡 Event Grid&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Claims Pipeline Events&lt;br&gt;Event-Driven Architecture&lt;br&gt;Topic Subscriptions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="910" y="720" width="220" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-appinsights" value="📊 Application Insights&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;FREE Tier (5GB/month)&lt;br&gt;Distributed Tracing&lt;br&gt;Performance Monitoring&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1160" y="720" width="220" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-loganalytics" value="📋 Log Analytics&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;KQL Queries&lt;br&gt;Dashboards &amp; Alerts&lt;br&gt;Diagnostic Settings&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1410" y="720" width="200" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-swa" value="🌐 Static Web App&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Free Tier&lt;br&gt;Blazor WASM Hosting&lt;br&gt;Route Protection&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#4488CC;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1640" y="720" width="190" height="90" as="geometry"/>
+                </mxCell>
+
+                <!-- Cost Badge -->
+                <mxCell id="cost-badge" value="💲 Est. NonProd Cost: $5–15/month (without Fabric)  |  $524/month (with Fabric F2)  |  60-day FREE trial available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d1a2e;strokeColor=#283593;fontSize=10;fontColor=#88BBEE;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="830" width="760" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="mi-badge" value="✅ All services use Managed Identity (DefaultAzureCredential) — Zero stored secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#2E7D32;fontSize=10;fontColor=#88DD99;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="860" y="830" width="500" height="30" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== ANALYTICS LAYER ========== -->
+                <mxCell id="fabric-workspace" value="🔶 Microsoft Fabric F2 (Central US)&lt;br&gt;&lt;font style=&quot;font-size:10px;font-weight:normal;&quot;&gt;Optional Analytics Layer&lt;br&gt;Auto-Pause at 6 PM ET (Logic Apps)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=12;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="1010" width="280" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fabric-onelake" value="🗄️ OneLake&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Data Lake (Zero-Copy)&lt;br&gt;Shortcuts to ADLS&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="380" y="1010" width="180" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fabric-lakehouse" value="🏠 Lakehouse (SQL)&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Structured Queries&lt;br&gt;Cosmos DB Mirroring&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="580" y="1010" width="190" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fabric-pbi" value="📊 Power BI (DirectLake)&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Real-Time Reporting&lt;br&gt;Revenue &amp; Claims KPIs&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="790" y="1010" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fabric-pipelines" value="🔄 Data Pipelines&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Replaces Azure Data Factory&lt;br&gt;ETL / Transformations&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1010" y="1010" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="fabric-scheduler" value="⏰ Logic Apps Scheduler&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Auto-Shutdown 6PM ET&lt;br&gt;Cost Optimization&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#DD8888;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1230" y="1010" width="200" height="70" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== GOVERNANCE ========== -->
+                <mxCell id="gov-auth" value="✅ Azure AD OAuth 2.0&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Managed Identity&lt;br&gt;FHIR Data Contributor Role&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="1240" width="210" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-rbac" value="✅ RBAC Roles&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Cosmos DB Data Contributor&lt;br&gt;Storage Blob Contributor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="300" y="1240" width="210" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-hipaa" value="✅ HIPAA Compliant&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;BAA Coverage&lt;br&gt;PHI/PII Data Labels&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="530" y="1240" width="200" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-audit" value="✅ Immutable Audit Trail&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Cosmos DB Logging&lt;br&gt;Timestamps + User Context&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="750" y="1240" width="210" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-encrypt" value="✅ Encryption&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;TLS 1.3 in Transit&lt;br&gt;AES-256 at Rest&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="980" y="1240" width="190" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-oidc" value="✅ OIDC (Passwordless)&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;GitHub Actions Fed Creds&lt;br&gt;No Stored Secrets&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1190" y="1240" width="200" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-fhir-std" value="✅ FHIR R4 Standard&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;HL7 Interoperability&lt;br&gt;EHR Integration Ready&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1410" y="1240" width="200" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="gov-regulatory" value="✅ Regulatory Rules&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;HEDIS Accreditation&lt;br&gt;State Compliance&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#66BB88;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="1630" y="1240" width="200" height="65" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== CI/CD PIPELINE ========== -->
+                <mxCell id="cicd-ci" value="🔨 ci.yml&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Build .NET 8 + .NET 10&lt;br&gt;Run Unit Tests&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0d3e;strokeColor=#AA88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="1440" width="200" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="cicd-infra" value="🏗️ deploy-infra.yml&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;Bicep Deployment&lt;br&gt;Resource Group Creation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0d3e;strokeColor=#AA88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="290" y="1440" width="210" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="cicd-func" value="⚡ deploy-function-app.yml&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;.NET 8 Build → Test → Deploy&lt;br&gt;Azure Functions&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0d3e;strokeColor=#AA88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="520" y="1440" width="230" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="cicd-blazor" value="🌐 deploy-blazor-portal.yml&lt;br&gt;&lt;font style=&quot;font-size:9px;font-weight:normal;&quot;&gt;.NET 10 WASM Build&lt;br&gt;Deploy → Static Web App&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0d3e;strokeColor=#AA88DD;fontSize=11;fontStyle=1;fontColor=#CCCCDD;shadow=1;" vertex="1" parent="1">
+                    <mxGeometry x="770" y="1440" width="230" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="cicd-oidc-badge" value="🔐 OIDC Federated Credentials — Zero Stored Secrets in CI/CD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d2e1a;strokeColor=#2E7D32;fontSize=10;fontColor=#88DD99;fontStyle=1;" vertex="1" parent="1">
+                    <mxGeometry x="1020" y="1455" width="400" height="30" as="geometry"/>
+                </mxCell>
+
+                <!-- ========== DATA FLOW EDGES ========== -->
+                <!-- App Tier → Service Layer -->
+                <mxCell id="e-app-svc" value="HTTP API Calls" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4499DD;strokeWidth=2;fontColor=#88BBEE;fontSize=10;labelBackgroundColor=#1a1a2e;flowAnimation=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="ui-claims-engine" target="fn-rules">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Service Layer → Azure Services -->
+                <mxCell id="e-fhirclient-fhir" value="FHIR R4 REST" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4499DD;strokeWidth=2;fontColor=#88BBEE;fontSize=10;labelBackgroundColor=#1a1a2e;flowAnimation=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-fhir" target="az-fhir">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e-cosmosaudit-cosmos" value="Audit Data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4499DD;strokeWidth=2;fontColor=#88BBEE;fontSize=10;labelBackgroundColor=#1a1a2e;flowAnimation=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-cosmos" target="az-cosmos">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e-event-grid" value="Claim Events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#FF5555;strokeWidth=2;fontColor=#FF8888;fontSize=10;labelBackgroundColor=#1a1a2e;flowAnimation=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc-event" target="az-eventgrid">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Auth Flow -->
+                <mxCell id="e-auth-fhir" value="OAuth 2.0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#55BB66;strokeWidth=2;fontColor=#88DD99;fontSize=10;labelBackgroundColor=#1a1a2e;dashed=1;dashPattern=8 4;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="gov-auth" target="az-fhir">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="290" y="1272"/>
+                            <mxPoint x="290" y="900"/>
+                            <mxPoint x="55" y="900"/>
+                            <mxPoint x="55" y="765"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+
+                <!-- Analytics Flow -->
+                <mxCell id="e-cosmos-fabric" value="Mirroring" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BB88DD;strokeWidth=2;fontColor=#CC99EE;fontSize=10;labelBackgroundColor=#1a1a2e;dashed=1;dashPattern=8 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="az-cosmos" target="fabric-lakehouse">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e-storage-onelake" value="Shortcuts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BB88DD;strokeWidth=2;fontColor=#CC99EE;fontSize=10;labelBackgroundColor=#1a1a2e;dashed=1;dashPattern=8 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="az-storage" target="fabric-onelake">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+
+                <!-- Claims Adjudication Flow Box -->
+                <mxCell id="flow-box" value="📋 Claims Adjudication Flow:  CSV/EDI Ingest → FHIR Mapping → 4-Step Validation (Coverage → Network → Eligibility → Financial) → ClaimResponse → Audit Log → Event Grid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d1b3e;strokeColor=#4499DD;fontSize=10;fontColor=#88BBEE;fontStyle=0;align=left;spacingLeft=10;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="1100" width="1100" height="40" as="geometry"/>
+                </mxCell>
+
+                <!-- Benefits Flow Box -->
+                <mxCell id="benefits-flow-box" value="💊 Multi-Benefit: Medical (Deductible/OOP/Copay) | Dental (Annual Max/Category %) | Pharmacy (5-Tier/TrOOP/Catastrophic) | Formulary (FDB/Medi-Span/RED BOOK)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d1b3e;strokeColor=#4499DD;fontSize=10;fontColor=#88BBEE;fontStyle=0;align=left;spacingLeft=10;" vertex="1" parent="1">
+                    <mxGeometry x="70" y="1150" width="1100" height="40" as="geometry"/>
+                </mxCell>
+
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

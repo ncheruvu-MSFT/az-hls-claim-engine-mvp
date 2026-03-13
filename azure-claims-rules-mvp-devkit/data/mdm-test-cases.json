@@ -1,0 +1,290 @@
+[
+  {
+    "testCase": "High Confidence Match - Name Abbreviation",
+    "expectedConfidence": "95-100",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-001",
+      "name": "John Michael Smith",
+      "dateOfBirth": "1980-03-15",
+      "ssn": "5678",
+      "address": "123 Main St, Seattle WA 98101",
+      "phone": "206-555-1234",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-002",
+      "name": "John M. Smith",
+      "dateOfBirth": "1980-03-15",
+      "ssn": "5678",
+      "address": "456 Oak Ave, Seattle WA 98102",
+      "phone": "206-555-1234",
+      "gender": "Male"
+    },
+    "reasoning": "Same DOB, SSN, phone. Name is shortened version (middle initial). Address change likely due to move within same city."
+  },
+  {
+    "testCase": "High Confidence Match - Nickname",
+    "expectedConfidence": "92-97",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-003",
+      "name": "Jennifer Lynn Johnson",
+      "dateOfBirth": "1985-07-22",
+      "ssn": "1234",
+      "address": "789 Pine St, Portland OR 97201",
+      "phone": "503-555-7890",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-004",
+      "name": "Jenny Johnson",
+      "dateOfBirth": "1985-07-22",
+      "ssn": "1234",
+      "address": "789 Pine St, Portland OR 97201",
+      "phone": "503-555-9999",
+      "gender": "Female"
+    },
+    "reasoning": "Same DOB, SSN, address. Jenny is common nickname for Jennifer. Phone change is concerning but not definitive."
+  },
+  {
+    "testCase": "High Confidence Match - Typo Detection (DOB Transposed)",
+    "expectedConfidence": "90-95",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-005",
+      "name": "Sarah Elizabeth Williams",
+      "dateOfBirth": "1992-01-30",
+      "ssn": "7890",
+      "address": "555 Maple Dr, Austin TX 78701",
+      "phone": "512-555-3333",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-006",
+      "name": "Sara Williams",
+      "dateOfBirth": "1992-01-03",
+      "ssn": "7890",
+      "address": "555 Maple Dr, Austin TX 78701",
+      "phone": "512-555-3333",
+      "gender": "Female"
+    },
+    "reasoning": "Sarah vs Sara (common spelling variation). DOB 01/30 vs 01/03 appears to be transposed digits (data entry error). Same SSN, address, phone. High confidence despite DOB discrepancy."
+  },
+  {
+    "testCase": "Medium Confidence Match - Multiple Small Variations",
+    "expectedConfidence": "82-88",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-007",
+      "name": "Robert James Anderson",
+      "dateOfBirth": "1978-05-14",
+      "ssn": "4567",
+      "address": "321 Elm St, Boston MA 02101",
+      "phone": "617-555-2222",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-008",
+      "name": "Bob Anderson",
+      "dateOfBirth": "1978-05-14",
+      "ssn": "4567",
+      "address": "987 Birch Ln, Boston MA 02102",
+      "phone": "617-555-8888",
+      "gender": "Male"
+    },
+    "reasoning": "Bob is common nickname for Robert. Same DOB and SSN (strong identifiers). Address and phone both changed (moved neighborhoods). Medium-high confidence."
+  },
+  {
+    "testCase": "Medium Confidence - Maiden Name Scenario",
+    "expectedConfidence": "75-85",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-009",
+      "name": "Emily Marie Thompson",
+      "dateOfBirth": "1990-11-08",
+      "ssn": "3456",
+      "address": "111 Oak St, Denver CO 80201",
+      "phone": "303-555-4444",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-010",
+      "name": "Emily Garcia",
+      "dateOfBirth": "1990-11-08",
+      "ssn": "3456",
+      "address": "222 Pine Ave, Denver CO 80202",
+      "phone": "303-555-5555",
+      "gender": "Female"
+    },
+    "reasoning": "Same first name, DOB, and SSN. Last name changed from Thompson to Garcia (possible marriage). Address and phone updated. Medium confidence requires human review."
+  },
+  {
+    "testCase": "Low Confidence Non-Match - Common Name, Different People",
+    "expectedConfidence": "10-20",
+    "expectedMatch": false,
+    "record1": {
+      "patientId": "patient-011",
+      "name": "Michael Anderson",
+      "dateOfBirth": "1975-11-10",
+      "ssn": "4321",
+      "address": "100 1st Ave, New York NY 10001",
+      "phone": "212-555-0001",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-012",
+      "name": "Michael Anderson",
+      "dateOfBirth": "1975-11-15",
+      "ssn": "9876",
+      "address": "200 2nd Ave, New York NY 10002",
+      "phone": "212-555-0002",
+      "gender": "Male"
+    },
+    "reasoning": "Very common name (Michael Anderson). DOB differs by 5 days (not likely a typo). Different SSN (strong signal for different person). Different address and phone. Likely two different people with same name."
+  },
+  {
+    "testCase": "Low Confidence Non-Match - Similar but Not Same",
+    "expectedConfidence": "25-35",
+    "expectedMatch": false,
+    "record1": {
+      "patientId": "patient-013",
+      "name": "Christopher David Martinez",
+      "dateOfBirth": "1988-02-20",
+      "ssn": "6789",
+      "address": "500 Broadway, Los Angeles CA 90001",
+      "phone": "213-555-6666",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-014",
+      "name": "Christopher Daniel Martinez",
+      "dateOfBirth": "1988-02-21",
+      "ssn": "7890",
+      "address": "500 Broadway, Los Angeles CA 90001",
+      "phone": "213-555-6666",
+      "gender": "Male"
+    },
+    "reasoning": "Same first name, similar middle names (David vs Daniel), same last name, same address and phone. BUT: different DOB (1 day apart, not transposed) and different SSN. Could be father/son or roommates. Low-medium confidence, requires review."
+  },
+  {
+    "testCase": "Edge Case - Missing SSN, High Confidence on Other Factors",
+    "expectedConfidence": "85-92",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-015",
+      "name": "Patricia Ann Wilson",
+      "dateOfBirth": "1965-09-12",
+      "ssn": "",
+      "address": "777 Cedar Rd, Miami FL 33101",
+      "phone": "305-555-7777",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-016",
+      "name": "Patricia A. Wilson",
+      "dateOfBirth": "1965-09-12",
+      "ssn": "",
+      "address": "777 Cedar Rd, Miami FL 33101",
+      "phone": "305-555-7777",
+      "gender": "Female"
+    },
+    "reasoning": "No SSN available for either record. However: exact DOB match, same address, same phone, name is abbreviated version (Patricia Ann → Patricia A.). High confidence despite missing SSN."
+  },
+  {
+    "testCase": "Edge Case - All Fields Match Except Gender",
+    "expectedConfidence": "45-55",
+    "expectedMatch": false,
+    "record1": {
+      "patientId": "patient-017",
+      "name": "Taylor Jordan Lee",
+      "dateOfBirth": "1995-06-25",
+      "ssn": "8901",
+      "address": "888 Sunset Blvd, Phoenix AZ 85001",
+      "phone": "602-555-8888",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-018",
+      "name": "Taylor Jordan Lee",
+      "dateOfBirth": "1995-06-25",
+      "ssn": "8901",
+      "address": "888 Sunset Blvd, Phoenix AZ 85001",
+      "phone": "602-555-8888",
+      "gender": "Female"
+    },
+    "reasoning": "Exact name, DOB, SSN, address, phone match. BUT: gender differs (Male vs Female). This is concerning - could be data entry error OR could be transgender patient. Requires human review for sensitivity."
+  },
+  {
+    "testCase": "Edge Case - Twin Siblings",
+    "expectedConfidence": "15-25",
+    "expectedMatch": false,
+    "record1": {
+      "patientId": "patient-019",
+      "name": "Jessica Lynn Brown",
+      "dateOfBirth": "1993-04-18",
+      "ssn": "2345",
+      "address": "999 Park Ave, Seattle WA 98101",
+      "phone": "206-555-9999",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-020",
+      "name": "Jennifer Lynn Brown",
+      "dateOfBirth": "1993-04-18",
+      "ssn": "2346",
+      "address": "999 Park Ave, Seattle WA 98101",
+      "phone": "206-555-9999",
+      "gender": "Female"
+    },
+    "reasoning": "Same DOB (twins), same middle and last name, same address and phone (siblings living together). BUT: different first names (Jessica vs Jennifer) and different SSN (sequential - 2345 vs 2346). Almost certainly twin sisters, NOT same person."
+  },
+  {
+    "testCase": "Typo Detection - Phone Number Transposed Digit",
+    "expectedConfidence": "93-98",
+    "expectedMatch": true,
+    "record1": {
+      "patientId": "patient-021",
+      "name": "David Lee Chen",
+      "dateOfBirth": "1982-12-05",
+      "ssn": "5432",
+      "address": "456 Market St, San Francisco CA 94102",
+      "phone": "415-555-1234",
+      "gender": "Male"
+    },
+    "record2": {
+      "patientId": "patient-022",
+      "name": "David Lee Chen",
+      "dateOfBirth": "1982-12-05",
+      "ssn": "5432",
+      "address": "456 Market St, San Francisco CA 94102",
+      "phone": "415-555-1324",
+      "gender": "Male"
+    },
+    "reasoning": "Exact name, DOB, SSN, address match. Phone differs by one transposed digit (1234 vs 1324 - last two digits swapped). Very likely data entry error. High confidence match."
+  },
+  {
+    "testCase": "No Match - Completely Different People",
+    "expectedConfidence": "0-5",
+    "expectedMatch": false,
+    "record1": {
+      "patientId": "patient-023",
+      "name": "Amanda Rose Miller",
+      "dateOfBirth": "1970-01-01",
+      "ssn": "1111",
+      "address": "111 North St, Chicago IL 60601",
+      "phone": "312-555-1111",
+      "gender": "Female"
+    },
+    "record2": {
+      "patientId": "patient-024",
+      "name": "Benjamin Thomas Davis",
+      "dateOfBirth": "1995-12-31",
+      "ssn": "9999",
+      "address": "999 South St, Atlanta GA 30301",
+      "phone": "404-555-9999",
+      "gender": "Male"
+    },
+    "reasoning": "No matching factors. Different name, DOB, SSN, address, phone, and gender. Clearly two different people."
+  }
+]

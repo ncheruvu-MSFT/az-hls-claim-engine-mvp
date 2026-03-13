@@ -1,0 +1,1030 @@
+@page "/provider-portal"
+@using ClaimsPortal.BlazorWasm.Models
+@using ClaimsPortal.BlazorWasm.Services
+@inject NaturalLanguageService NlService
+
+<PageTitle>Provider Portal - ClaimsIQ</PageTitle>
+
+<div class="provider-portal-container">
+    <div class="portal-header epic-style">
+        <div class="header-left">
+            <div class="logo-section">
+                <span class="logo-icon">⚕️</span>
+                <div class="logo-text">
+                    <div class="clinic-name">Northridge Health System</div>
+                    <div class="portal-name">Provider Portal</div>
+                </div>
+            </div>
+        </div>
+        <div class="header-center">
+            @if (!string.IsNullOrEmpty(currentProviderId))
+            {
+                <div class="search-bar">
+                    <input type="text" @bind="searchQuery" placeholder="Search patients (MRN, Name, DOB)..." class="epic-search" />
+                    <button class="btn-search" @onclick="SearchPatients">🔍</button>
+                </div>
+            }
+        </div>
+        <div class="header-right">
+            @if (!string.IsNullOrEmpty(currentProviderId))
+            {
+                <div class="provider-info">
+                    <div class="provider-badge">👨‍⚕️</div>
+                    <div class="provider-details">
+                        <div class="provider-name">@currentProviderName</div>
+                        <div class="provider-npi">NPI: @currentProviderId</div>
+                    </div>
+                    <button class="btn-logout-epic" @onclick="Logout">Exit</button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (string.IsNullOrEmpty(currentProviderId))
+    {
+        <!-- Provider Login -->
+        <div class="login-container epic-login">
+            <div class="login-card epic-card">
+                <h2>🔐 Provider Authentication</h2>
+                <p class="login-subtitle">Secure access to patient health information</p>
+                
+                <div class="form-group">
+                    <label>NPI Number</label>
+                    <input type="text" @bind="loginNpi" placeholder="1234567890" class="form-control" />
+                </div>
+                
+                <div class="form-group">
+                    <label>Facility Code</label>
+                    <input type="text" @bind="loginFacility" placeholder="NORTH001" class="form-control" />
+                </div>
+                
+                <div class="form-group">
+                    <label>Access Code</label>
+                    <input type="password" @bind="loginPassword" placeholder="••••••" class="form-control" />
+                </div>
+                
+                <button class="btn-login-epic" @onclick="Login">
+                    <span class="icon">🔑</span> Authenticate
+                </button>
+                
+                <div class="demo-credentials">
+                    <strong>Demo Credentials:</strong><br/>
+                    NPI: 1234567890 | Facility: NORTH001 | Code: demo123
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="epic-workspace">
+            <!-- Left Sidebar - Patient List -->
+            <div class="epic-sidebar">
+                <div class="sidebar-header">
+                    <h3>📋 My Patients</h3>
+                    <span class="patient-count">@patientList.Count patients</span>
+                </div>
+                
+                <div class="patient-list">
+                    @foreach (var patient in patientList)
+                    {
+                        <div class="patient-list-item @(selectedPatient?.MemberId == patient.MemberId ? "selected" : "")"
+                             @onclick="() => SelectPatient(patient)">
+                            <div class="patient-avatar">@GetInitials(patient.Name)</div>
+                            <div class="patient-brief">
+                                <div class="patient-name-small">@patient.Name</div>
+                                <div class="patient-mrn">MRN: @patient.MemberId</div>
+                                <div class="patient-age">@patient.Age y/o @patient.Gender</div>
+                            </div>
+                            @if (patient.HasAlerts)
+                            {
+                                <span class="alert-dot">🔴</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="epic-main-content">
+                @if (selectedPatient != null)
+                {
+                    <!-- Patient Banner (EPIC-style) -->
+                    <div class="patient-banner epic-banner">
+                        <div class="banner-left">
+                            <div class="patient-photo-large">@GetInitials(selectedPatient.Name)</div>
+                            <div class="patient-demographics">
+                                <h2 class="patient-name-large">@selectedPatient.Name</h2>
+                                <div class="demo-row">
+                                    <span><strong>DOB:</strong> @selectedPatient.DateOfBirth.ToString("MM/dd/yyyy")</span>
+                                    <span><strong>Age:</strong> @selectedPatient.Age</span>
+                                    <span><strong>Gender:</strong> @selectedPatient.Gender</span>
+                                    <span><strong>MRN:</strong> @selectedPatient.MemberId</span>
+                                </div>
+                                <div class="insurance-row">
+                                    <span><strong>Insurance:</strong> @selectedPatient.PlanName</span>
+                                    <span><strong>Member ID:</strong> @selectedPatient.MemberId</span>
+                                    <span class="status-badge active">Active Coverage</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="banner-right">
+                            <div class="banner-actions">
+                                <button class="epic-btn">📝 New Note</button>
+                                <button class="epic-btn">📋 Orders</button>
+                                <button class="epic-btn">💊 Prescribe</button>
+                                <button class="epic-btn">📄 Documents</button>
+                            </div>
+                            @if (selectedPatient.Allergies.Any())
+                            {
+                                <div class="allergies-alert">
+                                    <strong>⚠️ Allergies:</strong> @string.Join(", ", selectedPatient.Allergies)
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- EPIC-style Navigation Tabs -->
+                    <div class="epic-tabs">
+                        <button class="epic-tab @(providerTab == "summary" ? "active" : "")" @onclick='() => providerTab = "summary"'>
+                            📊 Summary
+                        </button>
+                        <button class="epic-tab @(providerTab == "coverage" ? "active" : "")" @onclick='() => providerTab = "coverage"'>
+                            🏥 Coverage
+                        </button>
+                        <button class="epic-tab @(providerTab == "claims" ? "active" : "")" @onclick='() => providerTab = "claims"'>
+                            💰 Claims History
+                        </button>
+                        <button class="epic-tab @(providerTab == "medications" ? "active" : "")" @onclick='() => providerTab = "medications"'>
+                            💊 Medications
+                        </button>
+                        <button class="epic-tab @(providerTab == "problems" ? "active" : "")" @onclick='() => providerTab = "problems"'>
+                            🩺 Problems
+                        </button>
+                        <button class="epic-tab @(providerTab == "fhir" ? "active" : "")" @onclick='() => providerTab = "fhir"'>
+                            🔗 FHIR Resources
+                        </button>
+                    </div>
+
+                    <!-- Summary Tab -->
+                    @if (providerTab == "summary")
+                    {
+                        <div class="epic-content-area">
+                            <div class="epic-section">
+                                <h3>🩺 Active Problems</h3>
+                                <table class="epic-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Problem</th>
+                                            <th>ICD-10</th>
+                                            <th>Onset Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var problem in selectedPatient.Problems)
+                                        {
+                                            <tr>
+                                                <td>@problem.Name</td>
+                                                <td><code>@problem.ICD10Code</code></td>
+                                                <td>@problem.OnsetDate.ToString("MM/dd/yyyy")</td>
+                                                <td><span class="status-badge active">Active</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="epic-section">
+                                <h3>💊 Current Medications</h3>
+                                <table class="epic-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Medication</th>
+                                            <th>Dose</th>
+                                            <th>Frequency</th>
+                                            <th>Prescriber</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var med in selectedPatient.Medications)
+                                        {
+                                            <tr>
+                                                <td>@med.Name</td>
+                                                <td>@med.Dose</td>
+                                                <td>@med.Frequency</td>
+                                                <td>@med.Prescriber</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="epic-section">
+                                <h3>🔬 Recent Vital Signs</h3>
+                                <div class="vitals-grid">
+                                    <div class="vital-card">
+                                        <div class="vital-label">Blood Pressure</div>
+                                        <div class="vital-value">128/82</div>
+                                        <div class="vital-date">Jan 5, 2026</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-label">Heart Rate</div>
+                                        <div class="vital-value">72 bpm</div>
+                                        <div class="vital-date">Jan 5, 2026</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-label">Weight</div>
+                                        <div class="vital-value">185 lbs</div>
+                                        <div class="vital-date">Jan 5, 2026</div>
+                                    </div>
+                                    <div class="vital-card">
+                                        <div class="vital-label">BMI</div>
+                                        <div class="vital-value">27.3</div>
+                                        <div class="vital-date">Jan 5, 2026</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Coverage Tab -->
+                    @if (providerTab == "coverage")
+                    {
+                        <div class="epic-content-area">
+                            <div class="coverage-verification-section">
+                                <h3>✅ Real-Time Eligibility Verification</h3>
+                                <div class="verification-card">
+                                    <div class="verification-status success">
+                                        <span class="icon">✓</span>
+                                        <div class="status-text">
+                                            <strong>Active Coverage Verified</strong>
+                                            <div>Verified on @DateTime.Now.ToString("MM/dd/yyyy HH:mm")</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="coverage-details-grid">
+                                        <div class="coverage-detail">
+                                            <label>Plan Name</label>
+                                            <strong>@selectedPatient.PlanName</strong>
+                                        </div>
+                                        <div class="coverage-detail">
+                                            <label>Plan Type</label>
+                                            <strong>Medicare Advantage HMO</strong>
+                                        </div>
+                                        <div class="coverage-detail">
+                                            <label>Effective Date</label>
+                                            <strong>01/01/2026</strong>
+                                        </div>
+                                        <div class="coverage-detail">
+                                            <label>Termination Date</label>
+                                            <strong>12/31/2026</strong>
+                                        </div>
+                                    </div>
+
+                                    <h4>💰 Benefit Accumulators (YTD)</h4>
+                                    <table class="benefit-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Benefit Type</th>
+                                                <th>Deductible Met</th>
+                                                <th>OOP Met</th>
+                                                <th>OOP Remaining</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Medical</strong></td>
+                                                <td>$0 / $0</td>
+                                                <td>$1,200</td>
+                                                <td>$3,800</td>
+                                                <td><span class="status-badge active">Active</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Dental</strong></td>
+                                                <td>$50 / $50</td>
+                                                <td>$450</td>
+                                                <td>$1,550</td>
+                                                <td><span class="status-badge active">Active</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Pharmacy</strong></td>
+                                                <td>$0 / $0</td>
+                                                <td>$180</td>
+                                                <td>$1,820</td>
+                                                <td><span class="status-badge active">Active</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                    <h4>🏥 Copay Information</h4>
+                                    <div class="copay-grid">
+                                        <div class="copay-card">
+                                            <div class="copay-service">Primary Care</div>
+                                            <div class="copay-amount">$0</div>
+                                        </div>
+                                        <div class="copay-card">
+                                            <div class="copay-service">Specialist</div>
+                                            <div class="copay-amount">$40</div>
+                                        </div>
+                                        <div class="copay-card">
+                                            <div class="copay-service">Emergency Room</div>
+                                            <div class="copay-amount">$90</div>
+                                        </div>
+                                        <div class="copay-card">
+                                            <div class="copay-service">Urgent Care</div>
+                                            <div class="copay-amount">$40</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Claims History Tab -->
+                    @if (providerTab == "claims")
+                    {
+                        <div class="epic-content-area">
+                            <div class="epic-section">
+                                <h3>💰 Claims Submitted by This Practice</h3>
+                                <table class="epic-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date of Service</th>
+                                            <th>Claim ID</th>
+                                            <th>CPT/HCPCS</th>
+                                            <th>Diagnosis</th>
+                                            <th>Billed</th>
+                                            <th>Allowed</th>
+                                            <th>Patient Resp.</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>01/05/2026</td>
+                                            <td>CLM-2026-001234</td>
+                                            <td><code>99214</code></td>
+                                            <td>E11.9 (Diabetes)</td>
+                                            <td>$150.00</td>
+                                            <td>$150.00</td>
+                                            <td>$0.00</td>
+                                            <td><span class="status-badge success">Paid</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>12/15/2025</td>
+                                            <td>CLM-2025-009876</td>
+                                            <td><code>99213</code></td>
+                                            <td>E11.9 (Diabetes)</td>
+                                            <td>$125.00</td>
+                                            <td>$125.00</td>
+                                            <td>$0.00</td>
+                                            <td><span class="status-badge success">Paid</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="epic-section">
+                                <h3>📊 Pre-Authorization Status</h3>
+                                <div class="preauth-message">
+                                    ℹ️ No active pre-authorizations for this patient
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Medications Tab -->
+                    @if (providerTab == "medications")
+                    {
+                        <div class="epic-content-area">
+                            <div class="epic-section">
+                                <div class="section-header">
+                                    <h3>💊 Medication List</h3>
+                                    <button class="epic-btn primary">+ New Prescription</button>
+                                </div>
+                                
+                                <table class="epic-table medications">
+                                    <thead>
+                                        <tr>
+                                            <th>Medication</th>
+                                            <th>NDC</th>
+                                            <th>Dose</th>
+                                            <th>Frequency</th>
+                                            <th>Formulary Tier</th>
+                                            <th>Copay</th>
+                                            <th>Prescriber</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Metformin ER</strong><br/><small>metformin hydrochloride</small></td>
+                                            <td><code>00093-0058-01</code></td>
+                                            <td>500mg</td>
+                                            <td>BID</td>
+                                            <td><span class="tier-badge tier1">Tier 1</span></td>
+                                            <td>$0.00</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Lisinopril</strong><br/><small>lisinopril</small></td>
+                                            <td><code>68382-0049-01</code></td>
+                                            <td>10mg</td>
+                                            <td>Daily</td>
+                                            <td><span class="tier-badge tier1">Tier 1</span></td>
+                                            <td>$0.00</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Atorvastatin</strong><br/><small>atorvastatin calcium</small></td>
+                                            <td><code>00071-0155-23</code></td>
+                                            <td>20mg</td>
+                                            <td>Daily</td>
+                                            <td><span class="tier-badge tier1">Tier 1</span></td>
+                                            <td>$0.00</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <div class="formulary-check-section">
+                                    <h4>🔍 Formulary Coverage Check</h4>
+                                    <p>All current medications are covered on patient's formulary (Tier 1 - Generic) with $0 copay.</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Problems Tab -->
+                    @if (providerTab == "problems")
+                    {
+                        <div class="epic-content-area">
+                            <div class="epic-section">
+                                <div class="section-header">
+                                    <h3>🩺 Problem List</h3>
+                                    <button class="epic-btn primary">+ Add Problem</button>
+                                </div>
+                                
+                                <table class="epic-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Problem</th>
+                                            <th>ICD-10 Code</th>
+                                            <th>SNOMED CT</th>
+                                            <th>Onset Date</th>
+                                            <th>Diagnosed By</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Type 2 Diabetes Mellitus</strong></td>
+                                            <td><code>E11.9</code></td>
+                                            <td><code>44054006</code></td>
+                                            <td>03/15/2020</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Essential Hypertension</strong></td>
+                                            <td><code>I10</code></td>
+                                            <td><code>59621000</code></td>
+                                            <td>06/20/2019</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Hyperlipidemia</strong></td>
+                                            <td><code>E78.5</code></td>
+                                            <td><code>55822004</code></td>
+                                            <td>06/20/2019</td>
+                                            <td>Dr. Sarah Johnson</td>
+                                            <td><span class="status-badge active">Active</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- FHIR Resources Tab -->
+                    @if (providerTab == "fhir")
+                    {
+                        <div class="epic-content-area fhir-view">
+                            <div class="fhir-resources-section">
+                                <h3>🔗 FHIR R4 Resources for @selectedPatient.Name</h3>
+                                
+                                <div class="fhir-tabs-secondary">
+                                    <button class="fhir-tab @(fhirTab == "patient" ? "active" : "")" @onclick='() => fhirTab = "patient"'>
+                                        Patient
+                                    </button>
+                                    <button class="fhir-tab @(fhirTab == "coverage" ? "active" : "")" @onclick='() => fhirTab = "coverage"'>
+                                        Coverage
+                                    </button>
+                                    <button class="fhir-tab @(fhirTab == "condition" ? "active" : "")" @onclick='() => fhirTab = "condition"'>
+                                        Condition
+                                    </button>
+                                    <button class="fhir-tab @(fhirTab == "medication" ? "active" : "")" @onclick='() => fhirTab = "medication"'>
+                                        MedicationRequest
+                                    </button>
+                                    <button class="fhir-tab @(fhirTab == "claim" ? "active" : "")" @onclick='() => fhirTab = "claim"'>
+                                        Claim
+                                    </button>
+                                </div>
+
+                                @if (fhirTab == "patient")
+                                {
+                                    <div class="fhir-resource-display">
+                                        <div class="resource-header">
+                                            <h4>Patient Resource</h4>
+                                            <div>
+                                                <button class="btn-secondary" @onclick="() => showFhirPatient = !showFhirPatient" style="margin-right: 0.5rem;">
+                                                    @(showFhirPatient ? "🔽 Hide" : "▶️ Show") JSON
+                                                </button>
+                                                <button class="btn-copy">📋 Copy JSON</button>
+                                            </div>
+                                        </div>
+                                        @if (showFhirPatient)
+                                        {
+                                            <pre><code>{
+  "resourceType": "Patient",
+  "id": "@selectedPatient.MemberId",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2026-01-08T00:00:00Z"
+  },
+  "identifier": [{
+    "use": "official",
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code": "MR",
+        "display": "Medical Record Number"
+      }]
+    },
+    "system": "http://hospital.northridge.org/patients",
+    "value": "@selectedPatient.MemberId"
+  }],
+  "active": true,
+  "name": [{
+    "use": "official",
+    "family": "@selectedPatient.Name.Split(' ').Last()",
+    "given": ["@selectedPatient.Name.Split(' ').First()"]
+  }],
+  "gender": "@selectedPatient.Gender.ToLower()",
+  "birthDate": "@selectedPatient.DateOfBirth.ToString("yyyy-MM-dd")",
+  "address": [{
+    "use": "home",
+    "line": ["123 Main Street"],
+    "city": "Northridge",
+    "state": "CA",
+    "postalCode": "91324"
+  }],
+  "managingOrganization": {
+    "reference": "Organization/northridge-health"
+  }
+}</code></pre>                                        }                                    </div>
+                                }
+
+                                @if (fhirTab == "coverage")
+                                {
+                                    <div class="fhir-resource-display">
+                                        <div class="resource-header">
+                                            <h4>Coverage Resource</h4>
+                                            <div>
+                                                <button class="btn-secondary" @onclick="() => showFhirCoverage = !showFhirCoverage" style="margin-right: 0.5rem;">
+                                                    @(showFhirCoverage ? "🔽 Hide" : "▶️ Show") JSON
+                                                </button>
+                                                <button class="btn-copy">📋 Copy JSON</button>
+                                            </div>
+                                        </div>
+                                        @if (showFhirCoverage)
+                                        {
+                                            <pre><code>{
+  "resourceType": "Coverage",
+  "id": "coverage-@selectedPatient.MemberId",
+  "status": "active",
+  "type": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+      "code": "EHCPOL",
+      "display": "extended healthcare"
+    }]
+  },
+  "subscriber": {
+    "reference": "Patient/@selectedPatient.MemberId"
+  },
+  "subscriberId": "@selectedPatient.MemberId",
+  "beneficiary": {
+    "reference": "Patient/@selectedPatient.MemberId"
+  },
+  "period": {
+    "start": "2026-01-01",
+    "end": "2026-12-31"
+  },
+  "payor": [{
+    "reference": "Organization/northridge-health",
+    "display": "Northridge Health System"
+  }],
+  "class": [{
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+        "code": "plan"
+      }]
+    },
+    "value": "@selectedPatient.PlanName",
+    "name": "@selectedPatient.PlanName"
+  }],
+  "costToBeneficiary": [{
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-copay-type",
+        "code": "deductible"
+      }]
+    },
+    "valueMoney": {
+      "value": 0,
+      "currency": "USD"
+    }
+  }, {
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/coverage-copay-type",
+        "code": "maxoutofpocket"
+      }]
+    },
+    "valueMoney": {
+      "value": 5000,
+      "currency": "USD"
+    }
+  }]
+}</code></pre>
+                                        }
+                                    </div>
+                                }
+
+                                @if (fhirTab == "condition")
+                                {
+                                    <div class="fhir-resource-display">
+                                        <div class="resource-header">
+                                            <h4>Condition Resource (Diabetes)</h4>
+                                            <div>
+                                                <button class="btn-secondary" @onclick="() => showFhirCondition = !showFhirCondition" style="margin-right: 0.5rem;">
+                                                    @(showFhirCondition ? "🔽 Hide" : "▶️ Show") JSON
+                                                </button>
+                                                <button class="btn-copy">📋 Copy JSON</button>
+                                            </div>
+                                        </div>
+                                        @if (showFhirCondition)
+                                        {
+                                            <pre><code>{
+  "resourceType": "Condition",
+  "id": "condition-diabetes-@selectedPatient.MemberId",
+  "clinicalStatus": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+      "code": "active"
+    }]
+  },
+  "verificationStatus": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+      "code": "confirmed"
+    }]
+  },
+  "category": [{
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+      "code": "encounter-diagnosis",
+      "display": "Encounter Diagnosis"
+    }]
+  }],
+  "code": {
+    "coding": [{
+      "system": "http://hl7.org/fhir/sid/icd-10-cm",
+      "code": "E11.9",
+      "display": "Type 2 diabetes mellitus without complications"
+    }, {
+      "system": "http://snomed.info/sct",
+      "code": "44054006",
+      "display": "Type 2 diabetes mellitus"
+    }]
+  },
+  "subject": {
+    "reference": "Patient/@selectedPatient.MemberId"
+  },
+  "onsetDateTime": "2020-03-15",
+  "asserter": {
+    "reference": "Practitioner/@currentProviderId",
+    "display": "@currentProviderName"
+  },
+  "recordedDate": "2020-03-15"
+}</code></pre>
+                                        }
+                                    </div>
+                                }
+
+                                @if (fhirTab == "medication")
+                                {
+                                    <div class="fhir-resource-display">
+                                        <div class="resource-header">
+                                            <h4>MedicationRequest Resource (Metformin)</h4>
+                                            <div>
+                                                <button class="btn-secondary" @onclick="() => showFhirMedication = !showFhirMedication" style="margin-right: 0.5rem;">
+                                                    @(showFhirMedication ? "🔽 Hide" : "▶️ Show") JSON
+                                                </button>
+                                                <button class="btn-copy">📋 Copy JSON</button>
+                                            </div>
+                                        </div>
+                                        @if (showFhirMedication)
+                                        {
+                                            <pre><code>{
+  "resourceType": "MedicationRequest",
+  "id": "medrx-metformin-@selectedPatient.MemberId",
+  "status": "active",
+  "intent": "order",
+  "medicationCodeableConcept": {
+    "coding": [{
+      "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+      "code": "860975",
+      "display": "metformin hydrochloride 500 MG Extended Release Oral Tablet"
+    }, {
+      "system": "http://hl7.org/fhir/sid/ndc",
+      "code": "00093-0058-01"
+    }],
+    "text": "Metformin ER 500mg"
+  },
+  "subject": {
+    "reference": "Patient/@selectedPatient.MemberId"
+  },
+  "authoredOn": "2020-03-15",
+  "requester": {
+    "reference": "Practitioner/@currentProviderId",
+    "display": "@currentProviderName"
+  },
+  "dosageInstruction": [{
+    "text": "Take 1 tablet by mouth twice daily",
+    "timing": {
+      "repeat": {
+        "frequency": 2,
+        "period": 1,
+        "periodUnit": "d"
+      }
+    },
+    "doseAndRate": [{
+      "doseQuantity": {
+        "value": 1,
+        "unit": "tablet",
+        "system": "http://unitsofmeasure.org",
+        "code": "{tablet}"
+      }
+    }]
+  }],
+  "dispenseRequest": {
+    "numberOfRepeatsAllowed": 11,
+    "quantity": {
+      "value": 60,
+      "unit": "tablet"
+    },
+    "expectedSupplyDuration": {
+      "value": 30,
+      "unit": "days",
+      "system": "http://unitsofmeasure.org",
+      "code": "d"
+    }
+  }
+}</code></pre>
+                                        }
+                                    </div>
+                                }
+
+                                @if (fhirTab == "claim")
+                                {
+                                    <div class="fhir-resource-display">
+                                        <div class="resource-header">
+                                            <h4>Claim Resource (Professional Claim)</h4>
+                                            <div>
+                                                <button class="btn-secondary" @onclick="() => showFhirClaim = !showFhirClaim" style="margin-right: 0.5rem;">
+                                                    @(showFhirClaim ? "🔽 Hide" : "▶️ Show") JSON
+                                                </button>
+                                                <button class="btn-copy">📋 Copy JSON</button>
+                                            </div>
+                                        </div>
+                                        @if (showFhirClaim)
+                                        {
+                                            <pre><code>{
+  "resourceType": "Claim",
+  "id": "claim-2026-001234",
+  "status": "active",
+  "type": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+      "code": "professional"
+    }]
+  },
+  "use": "claim",
+  "patient": {
+    "reference": "Patient/@selectedPatient.MemberId"
+  },
+  "billablePeriod": {
+    "start": "2026-01-05",
+    "end": "2026-01-05"
+  },
+  "created": "2026-01-05T10:30:00Z",
+  "provider": {
+    "reference": "Practitioner/@currentProviderId"
+  },
+  "priority": {
+    "coding": [{
+      "code": "normal"
+    }]
+  },
+  "insurance": [{
+    "sequence": 1,
+    "focal": true,
+    "coverage": {
+      "reference": "Coverage/coverage-@selectedPatient.MemberId"
+    }
+  }],
+  "item": [{
+    "sequence": 1,
+    "productOrService": {
+      "coding": [{
+        "system": "http://www.ama-assn.org/go/cpt",
+        "code": "99214",
+        "display": "Office visit, established patient, moderate complexity"
+      }]
+    },
+    "servicedDate": "2026-01-05",
+    "unitPrice": {
+      "value": 150.00,
+      "currency": "USD"
+    },
+    "net": {
+      "value": 150.00,
+      "currency": "USD"
+    },
+    "encounter": [{
+      "reference": "Encounter/enc-2026-001234"
+    }]
+  }],
+  "total": {
+    "value": 150.00,
+    "currency": "USD"
+  }
+}</code></pre>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="no-patient-selected">
+                        <div class="icon">📋</div>
+                        <h3>Select a patient from the list</h3>
+                        <p>Patient information will appear here</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string loginNpi = string.Empty;
+    private string loginFacility = string.Empty;
+    private string loginPassword = string.Empty;
+    
+    private string currentProviderId = string.Empty;
+    private string currentProviderName = string.Empty;
+    
+    private string searchQuery = string.Empty;
+    private string providerTab = "summary";
+    private string fhirTab = "patient";
+    
+    private List<PatientInfo> patientList = new();
+    private PatientInfo? selectedPatient = null;
+
+    protected override void OnInitialized()
+    {
+        LoadPatients();
+    }
+
+    private void Login()
+    {
+        if (loginNpi == "1234567890" && loginFacility == "NORTH001" && loginPassword == "demo123")
+        {
+            currentProviderId = "1234567890";
+            currentProviderName = "Dr. Sarah Johnson, MD";
+        }
+    }
+
+    private void Logout()
+    {
+        currentProviderId = string.Empty;
+        currentProviderName = string.Empty;
+        selectedPatient = null;
+    }
+
+    private void LoadPatients()
+    {
+        patientList = new List<PatientInfo>
+        {
+            new PatientInfo
+            {
+                MemberId = "SUB001",
+                Name = "John Smith",
+                DateOfBirth = new DateTime(1975, 5, 15),
+                Age = 50,
+                Gender = "Male",
+                PlanName = "Northridge Medicare Prime HMO",
+                HasAlerts = true,
+                Allergies = new List<string> { "Penicillin" },
+                Problems = new List<ProblemInfo>
+                {
+                    new ProblemInfo { Name = "Type 2 Diabetes Mellitus", ICD10Code = "E11.9", OnsetDate = new DateTime(2020, 3, 15) },
+                    new ProblemInfo { Name = "Essential Hypertension", ICD10Code = "I10", OnsetDate = new DateTime(2019, 6, 20) },
+                    new ProblemInfo { Name = "Hyperlipidemia", ICD10Code = "E78.5", OnsetDate = new DateTime(2019, 6, 20) }
+                },
+                Medications = new List<MedicationInfo>
+                {
+                    new MedicationInfo { Name = "Metformin ER", Dose = "500mg", Frequency = "BID", Prescriber = "Dr. Sarah Johnson" },
+                    new MedicationInfo { Name = "Lisinopril", Dose = "10mg", Frequency = "Daily", Prescriber = "Dr. Sarah Johnson" },
+                    new MedicationInfo { Name = "Atorvastatin", Dose = "20mg", Frequency = "Daily", Prescriber = "Dr. Sarah Johnson" }
+                }
+            },
+            new PatientInfo
+            {
+                MemberId = "DEP001",
+                Name = "Sarah Smith",
+                DateOfBirth = new DateTime(1978, 8, 22),
+                Age = 47,
+                Gender = "Female",
+                PlanName = "Northridge Medicare Prime HMO",
+                HasAlerts = false,
+                Allergies = new List<string>(),
+                Problems = new List<ProblemInfo>
+                {
+                    new ProblemInfo { Name = "Seasonal Allergies", ICD10Code = "J30.1", OnsetDate = new DateTime(2015, 4, 10) }
+                },
+                Medications = new List<MedicationInfo>
+                {
+                    new MedicationInfo { Name = "Cetirizine", Dose = "10mg", Frequency = "Daily PRN", Prescriber = "Dr. Sarah Johnson" }
+                }
+            }
+        };
+    }
+
+    private void SelectPatient(PatientInfo patient)
+    {
+        selectedPatient = patient;
+        providerTab = "summary";
+    }
+
+    private void SearchPatients()
+    {
+        // Implement search logic
+    }
+
+    private string GetInitials(string name)
+    {
+        var parts = name.Split(' ');
+        return parts.Length >= 2 ? $"{parts[0][0]}{parts[1][0]}" : name.Substring(0, Math.Min(2, name.Length));
+    }
+
+    private class PatientInfo
+    {
+        public string MemberId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public DateTime DateOfBirth { get; set; }
+        public int Age { get; set; }
+        public string Gender { get; set; } = string.Empty;
+        public string PlanName { get; set; } = string.Empty;
+        public bool HasAlerts { get; set; }
+        public List<string> Allergies { get; set; } = new();
+        public List<ProblemInfo> Problems { get; set; } = new();
+        public List<MedicationInfo> Medications { get; set; } = new();
+    }
+
+    private class ProblemInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string ICD10Code { get; set; } = string.Empty;
+        public DateTime OnsetDate { get; set; }
+    }
+
+    private class MedicationInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Dose { get; set; } = string.Empty;
+        public string Frequency { get; set; } = string.Empty;
+        public string Prescriber { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,73 @@
+﻿@page "/"
+
+<PageTitle>Home - ClaimsIQ Platform</PageTitle>
+
+<div class="page-header">
+    <h3>🏥 Azure HealthCare Intelligence Platform</h3>
+    <p class="subtitle">Enterprise Healthcare Claims Processing with FHIR R4 Compliance & AI-Powered Fraud Detection</p>
+</div>
+
+<div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <h4 style="color: #0078d4; margin-bottom: 1.5rem;">Welcome to the Claims Management Platform</h4>
+    
+    <p style="line-height: 1.6; margin-bottom: 1.5rem;">
+        This portal provides comprehensive healthcare claims management capabilities inspired by industry-leading 
+        systems like Trizetto Facets, with full FHIR R4 schema compliance and natural language assistance powered by AI.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #0078d4;">
+            <h5 style="color: #0078d4; margin-bottom: 1rem;">🏥 Benefits Configuration</h5>
+            <p style="line-height: 1.5; margin-bottom: 1rem;">
+                Configure and manage benefit plans including PPO, HMO, EPO, and Catastrophic coverage. 
+                View deductibles, coinsurance rates, copays, and covered services with real-time FHIR mapping.
+            </p>
+            <a href="/benefits" style="color: #0078d4; font-weight: 600; text-decoration: none;">
+                Manage Benefits →
+            </a>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #107c10;">
+            <h5 style="color: #107c10; margin-bottom: 1rem;">⚙️ Claims Engine</h5>
+            <p style="line-height: 1.5; margin-bottom: 1rem;">
+                Real-time claims adjudication with 4-step validation: coverage check, network validation, 
+                deductible/coinsurance calculation, and out-of-pocket maximum enforcement.
+            </p>
+            <a href="/claims-engine" style="color: #107c10; font-weight: 600; text-decoration: none;">
+                Validate Claims →
+            </a>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #7b1fa2;">
+            <h5 style="color: #7b1fa2; margin-bottom: 1rem;">🔍 Eligibility Verification</h5>
+            <p style="line-height: 1.5; margin-bottom: 1rem;">
+                270/271 HIPAA-compliant eligibility checks. Real-time verification of patient coverage, 
+                deductible status, and out-of-pocket spending with FHIR CoverageEligibilityResponse.
+            </p>
+            <a href="/eligibility" style="color: #7b1fa2; font-weight: 600; text-decoration: none;">
+                Check Eligibility →
+            </a>
+        </div>
+    </div>
+
+    <div style="background: linear-gradient(135deg, #e8f4fd 0%, #ffffff 100%); padding: 1.5rem; border-radius: 8px; margin-top: 2rem; border: 2px solid #0078d4;">
+        <h5 style="color: #0078d4; margin-bottom: 1rem;">💬 Natural Language AI Assistant</h5>
+        <p style="line-height: 1.5; margin-bottom: 0;">
+            Each module includes an AI-powered assistant that answers questions about benefit configuration, 
+            claims processing, eligibility rules, CPT codes, and FHIR mappings in plain English. Just type your 
+            question to get instant guidance on complex healthcare concepts.
+        </p>
+    </div>
+
+    <div style="margin-top: 2rem; padding: 1.5rem; background: #f3f2f1; border-radius: 8px;">
+        <h5 style="margin-bottom: 1rem;">📊 Key Features</h5>
+        <ul style="line-height: 1.8; padding-left: 1.5rem;">
+            <li><strong>FHIR R4 Compliant:</strong> All data structures map to FHIR resources (Coverage, Claim, ClaimResponse, CoverageEligibilityResponse)</li>
+            <li><strong>Natural Language Help:</strong> Context-aware AI assistant for product configuration and questions</li>
+            <li><strong>Real-time Validation:</strong> Instant claim adjudication with detailed error/warning messages</li>
+            <li><strong>Benefit Management:</strong> Multi-plan support with PPO/HMO/EPO configurations</li>
+            <li><strong>Progress Tracking:</strong> Visual deductible and out-of-pocket maximum tracking</li>
+            <li><strong>Industry Standards:</strong> CPT codes, ICD-10, X12 EDI concepts integrated</li>
+        </ul>
+    </div>
+</div>

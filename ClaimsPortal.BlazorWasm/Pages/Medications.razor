@@ -1,0 +1,333 @@
+@page "/medications"
+@using ClaimsPortal.BlazorWasm.Services
+@inject MemberPortalService MemberService
+@inject NavigationManager Navigation
+
+<PageTitle>Medications - ClaimsIQ</PageTitle>
+
+<div class="page-header">
+    <h3>💊 MEDICATIONS</h3>
+    <p class="subtitle">View your active prescriptions and request refills</p>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading medications...</span>
+        </div>
+        <p class="mt-3">Loading your medications...</p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>⚠️ Error:</strong> @errorMessage
+    </div>
+}
+else if (medications == null || !medications.Any())
+{
+    <div class="alert alert-info" role="alert">
+        <h5>📋 No Active Medications</h5>
+        <p>You don't have any active prescriptions on file. If you believe this is incorrect, please contact your provider.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">📋 ACTIVE MEDICATIONS (@medications.Count)</h4>
+            <input type="text" class="form-control w-25" placeholder="🔍 Search medications..." @bind="searchTerm" @bind:event="oninput" />
+        </div>
+        <div class="card-body">
+            @foreach (var med in FilteredMedications)
+            {
+                <div class="medication-card mb-3">
+                    <div class="medication-header">
+                        <div>
+                            <h5 class="mb-1">💊 @med.Name</h5>
+                            <p class="text-muted mb-0">@med.Dosage</p>
+                        </div>
+                        <span class="badge bg-success">@med.Status</span>
+                    </div>
+                    
+                    <div class="medication-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Instructions:</strong>
+                                    <p>@med.Instructions</p>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Frequency:</strong>
+                                    <p>@med.Frequency</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <strong>Last Filled:</strong>
+                                    <p>@med.LastFilled</p>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Refills Remaining:</strong>
+                                    <p>
+                                        @if (med.RefillsRemaining.HasValue)
+                                        {
+                                            <span class="badge @(med.RefillsRemaining > 0 ? "bg-success" : "bg-warning")">
+                                                @med.RefillsRemaining refill(s)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span>N/A</span>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Prescribed By:</strong>
+                                    <p>@med.Prescriber</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="medication-actions">
+                        <button class="btn btn-primary btn-sm" @onclick="() => RequestRefill(med.MedicationId)">
+                            Request Refill
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => ViewDetails(med.MedicationId)">
+                            Details
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (medications.Count > FilteredMedications.Count())
+    {
+        <div class="alert alert-info mt-3">
+            Showing @FilteredMedications.Count() of @medications.Count medications
+        </div>
+    }
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <h5>📋 DISCONTINUED MEDICATIONS</h5>
+            <p class="text-muted">View your medication history and discontinued prescriptions</p>
+            <button class="btn btn-outline-primary" disabled>
+                View 12 Older Medications (Coming Soon)
+            </button>
+        </div>
+    </div>
+}
+
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.75rem;
+    }
+
+    .subtitle {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .card-header h4 {
+        font-size: 1.25rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .medication-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .medication-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .medication-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .medication-header h5 {
+        color: #0078d4;
+        font-weight: 600;
+    }
+
+    .medication-body {
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        margin-bottom: 0.75rem;
+    }
+
+    .info-item strong {
+        color: #605e5c;
+        font-size: 0.875rem;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .info-item p {
+        margin: 0;
+        color: #323130;
+    }
+
+    .medication-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .btn-primary {
+        background: #0078d4;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: #106ebe;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-outline-secondary {
+        border: 1px solid #6c757d;
+        color: #6c757d;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        background: white;
+        transition: all 0.2s ease;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #6c757d;
+        color: white;
+    }
+
+    .badge {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .bg-success {
+        background-color: #107c10 !important;
+    }
+
+    .bg-warning {
+        background-color: #ff8c00 !important;
+    }
+
+    .form-control {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .form-control:focus {
+        background: white;
+        color: #323130;
+        border-color: white;
+    }
+</style>
+
+@code {
+    private List<MedicationDetail>? medications;
+    private string searchTerm = "";
+    private bool isLoading = true;
+    private string errorMessage = "";
+
+    private IEnumerable<MedicationDetail> FilteredMedications =>
+        medications?.Where(m => 
+            string.IsNullOrEmpty(searchTerm) || 
+            m.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            m.Prescriber.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+        ) ?? Enumerable.Empty<MedicationDetail>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMedications();
+    }
+
+    private async Task LoadMedications()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+            
+            // Get patientId from session storage or navigation state
+            // For demo, using a test patient ID
+            var patientId = "example-patient-1";
+            
+            medications = await MemberService.GetMedicationsDetailedAsync(patientId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load medications: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void RequestRefill(string medicationId)
+    {
+        // Navigate to refill request page or show modal
+        Navigation.NavigateTo($"/refill-request/{medicationId}");
+    }
+
+    private void ViewDetails(string medicationId)
+    {
+        // Navigate to medication details page
+        Navigation.NavigateTo($"/medication-details/{medicationId}");
+    }
+}
